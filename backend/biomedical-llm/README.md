@@ -4,7 +4,7 @@ This service provides AI-assisted patient prognosis using MONAI multimodal model
 
 ## Setup
 
-REQUIRES GPU SUPPORT
+REQUIRES WORKSTATION W/ GPU SUPPORT
 
 1. Install dependencies:
    ```bash

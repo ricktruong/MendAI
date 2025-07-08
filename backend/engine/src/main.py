@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
+from common.src.core.logger import configure_logging
+
+configure_logging()
+
 app = FastAPI()
 
 # Allow all origins for now (adjust in production)
