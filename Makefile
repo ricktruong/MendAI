@@ -24,7 +24,11 @@ help:
 	@echo "  gpu-check - Check GPU availability in containers"
 
 # Production commands
+build-base:
+	./docker/build-base-images.sh
+
 build:
+	./docker/build-base-images.sh
 	docker-compose build
 
 up:
@@ -44,6 +48,7 @@ clean:
 
 # Development commands
 dev-build:
+	./docker/build-base-images.sh
 	docker-compose -f docker-compose.dev.yml build
 
 dev-up:

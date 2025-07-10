@@ -73,7 +73,10 @@ for service in backend/engine backend/patient-data backend/imaging backend/biome
     fi
 done
 
-# Build and start services
+# Build base images and services
+echo "🏗️  Building base images..."
+./docker/build-base-images.sh
+
 echo "🏗️  Building Docker images..."
 docker-compose build
 

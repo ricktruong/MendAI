@@ -1,8 +1,5 @@
 # Development stage
-FROM node:18-alpine
-
-# Set working directory
-WORKDIR /app
+FROM mendai/node-base:latest
 
 # Copy package files
 COPY package*.json ./

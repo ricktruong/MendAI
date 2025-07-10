@@ -1,4 +1,4 @@
-# Use NVIDIA's official Jetson base image
+# Shared Python GPU base image for GPU-enabled services (Jetson)
 FROM nvcr.io/nvidia/l4t-pytorch:r36.2.0-pth2.1.0-py3
 
 # Set environment variables
@@ -20,30 +20,19 @@ RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
-
-# Copy poetry files
-COPY pyproject.toml poetry.lock* ./
-
 # Install Poetry
 RUN pip install poetry
 
 # Configure Poetry to not create virtual environment (since we're in a container)
 RUN poetry config virtualenvs.create false
 
-# Install Python dependencies
-RUN poetry install --no-interaction --no-ansi
-
-# Copy application code
-COPY src/ ./src/
-
 # Create a non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
+RUN useradd -m -u 1000 appuser
 
-# Expose port
-EXPOSE 8002
+# Set working directory
+WORKDIR /app
 
-# Run the application with reload for development
-CMD ["poetry", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"] 
+# Change ownership to appuser
+RUN chown -R appuser:appuser /app
+
+USER appuser 
