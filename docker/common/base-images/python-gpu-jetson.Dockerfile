@@ -1,6 +1,6 @@
-# Shared Python GPU base image for GPU-enabled services
-# Works on both regular Linux and Jetson devices
-FROM python:3.9-slim
+# Shared Python GPU base image for Jetson devices
+# Use this when running on actual NVIDIA Jetson hardware
+FROM nvcr.io/nvidia/l4t-pytorch:r36.2.0-pth2.1.0-py3
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive

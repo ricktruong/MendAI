@@ -7,6 +7,11 @@ COPY pyproject.toml poetry.lock* ./
 # Install Python dependencies (production only)
 RUN poetry install --no-dev --no-interaction --no-ansi
 
+# Install PyTorch and CUDA support if not on Jetson
+RUN if [ ! -f /etc/nv_tegra_release ] && [ "$(uname -m)" != "aarch64" ]; then \
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu; \
+    fi
+
 # Copy application code
 COPY src/ ./src/
 

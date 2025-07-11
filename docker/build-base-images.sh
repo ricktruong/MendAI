@@ -9,11 +9,14 @@ echo "🏗️  Building shared base images..."
 echo "📦 Building Python base image..."
 docker build -t mendai/python-base:latest -f docker/common/base-images/python-base.Dockerfile .
 
-# TODO: Build Python GPU base image
-
-# Build Python Jetson GPU base image
-echo "📦 Building Python GPU base image..."
-docker build -t mendai/python-gpu-base:latest -f docker/common/base-images/python-gpu-base.Dockerfile .
+# Check if running on Jetson device (multiple indicators)
+if [ -f /etc/nv_tegra_release ] || [ "$(uname -m)" = "aarch64" ] && [ -d /etc/nv ]; then
+    echo "📦 Building Python GPU base image for Jetson..."
+    docker build -t mendai/python-gpu-base:latest -f docker/common/base-images/python-gpu-jetson.Dockerfile .
+else
+    echo "📦 Building Python GPU base image for regular Linux..."
+    docker build -t mendai/python-gpu-base:latest -f docker/common/base-images/python-gpu-base.Dockerfile .
+fi
 
 # Build Node.js base image
 echo "📦 Building Node.js base image..."
