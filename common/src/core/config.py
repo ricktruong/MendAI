@@ -1,7 +1,4 @@
 import json
 import secrets
 
-from starlette.config import Config
-
-config = Config(".env")
-
+# TODO: might switch to using Dynaconf
