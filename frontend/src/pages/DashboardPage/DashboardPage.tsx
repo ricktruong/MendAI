@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './DashboardPage.css';
 
 interface CtCase {
@@ -17,20 +17,8 @@ const initialCases: CtCase[] = [
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [ctCases, setCtCases] = useState<CtCase[]>(initialCases);
-
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const newCase: CtCase = {
-        id: `ct-${Date.now()}`,
-        patientName: 'New Patient', 
-        fileName: file.name,
-        uploadedAt: new Date().toISOString().slice(0, 10)
-      };
-      setCtCases([newCase, ...ctCases]);
-    }
-  };
 
   return (
     <div className="dashboard-page">
@@ -40,13 +28,6 @@ const DashboardPage: React.FC = () => {
           <p className="header-subtitle">Real-time multimodal analysis overview</p>
         </div>
         <div className="header-actions">
-          <button 
-            className="nav-button"
-            onClick={() => navigate('/chat')}
-          >
-            <span>💬</span>
-            AI Assistant
-          </button>
           <button className="nav-button logout">
             <span>🚪</span>
             Logout
@@ -58,17 +39,6 @@ const DashboardPage: React.FC = () => {
         <div className="dashboard-card">
           <div className="card-header">
             <h2>Saved CT Cases</h2>
-            <label htmlFor="ct-upload" className="upload-button">+ Upload CT File</label>
-            <button className="view-all-button" onClick={() => navigate('/ct-cases')}>
-               View All →
-            </button>
-            <input
-              id="ct-upload"
-              type="file"
-              accept=".dcm,.zip"
-              onChange={handleUpload}
-              style={{ display: 'none' }}
-            />
           </div>
           <div className="ct-case-list">
             {ctCases.map((ct) => (
@@ -79,7 +49,7 @@ const DashboardPage: React.FC = () => {
                 </div>
                 <button 
                   className="view-all-button"
-                  onClick={() => navigate(`/ct-viewer/${ct.id}`)}
+                  onClick={() => navigate('/chat', { state: { patient: ct } })}
                 >
                   View
                 </button>

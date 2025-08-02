@@ -1,25 +1,30 @@
-/* Minimal Dashboard Header Styles */
+/* Dark Theme Dashboard Styles to match ChatPage */
+.dashboard-page {
+  min-height: 100vh;
+  background: #1a202c;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
 .dashboard-header {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
+  background: #2d3748;
+  border-bottom: 1px solid #4a5568;
   padding: 1.5rem 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .header-content h1 {
   margin: 0;
   font-size: 2rem;
-  color: #1e293b;
+  color: #e2e8f0;
   font-weight: 700;
 }
 
 .header-subtitle {
   margin: 0.25rem 0 0;
-  color: #64748b;
+  color: #cbd5e1;
   font-size: 0.875rem;
 }
 
@@ -29,16 +34,15 @@
   gap: 1rem;
 }
 
-
 .nav-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #4a5568;
+  border: 1px solid #718096;
   border-radius: 8px;
-  color: #475569;
+  color: #e2e8f0;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -46,48 +50,100 @@
 }
 
 .nav-button:hover {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
+  background: #718096;
+  border-color: #a0aec0;
+  color: #f7fafc;
 }
 
 .nav-button.logout:hover {
-  background: #ef4444;
-  border-color: #ef4444;
+  background: #e53e3e;
+  border-color: #e53e3e;
+  color: white;
+}
+
+.dashboard-content {
+  padding: 2rem;
+}
+
+.dashboard-card {
+  background: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+.card-header {
+  background: #1a202c;
+  border-bottom: 1px solid #4a5568;
+  padding: 1.5rem 2rem;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 1.25rem;
+  font-weight: 600;
 }
 
 .ct-case-list {
-  padding: 1rem 1.5rem;
+  padding: 1.5rem 2rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .ct-case-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 0.75rem;
+  padding: 1rem;
+  background: #1a202c;
+  border: 1px solid #4a5568;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.ct-case-item:hover {
+  background: #374151;
+  border-color: #6b7280;
+  transform: translateY(-1px);
 }
 
 .ct-case-info h4 {
   margin: 0 0 0.25rem;
-  color: #1e293b;
-  font-size: 1rem;
+  color: #e2e8f0;
+  font-size: 1.1rem;
   font-weight: 600;
 }
 
 .ct-case-info p {
   margin: 0;
   font-size: 0.875rem;
-  color: #64748b;
+  color: #cbd5e1;
+}
+
+.view-all-button {
+  background: #3b82f6;
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.view-all-button:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
 }
 
 .upload-button {
   background: #10b981;
   color: white;
-  padding: 0.375rem 0.75rem;
+  padding: 0.5rem 1rem;
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -98,6 +154,7 @@
 
 .upload-button:hover {
   background: #059669;
+  transform: translateY(-1px);
 }
 
 .ct-actions {
@@ -106,3 +163,32 @@
   align-items: center;
 }
 
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-header {
+    padding: 1rem;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .dashboard-content {
+    padding: 1rem;
+  }
+  
+  .ct-case-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .ct-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

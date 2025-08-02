@@ -131,7 +131,7 @@ const LoginPage: React.FC = () => {
             </button>
 
             <div className="login-footer">
-              <p>New to MendAI? <a href="#">Request access</a></p>
+              <p>New to MendAI? <a href="/signup">Request access</a></p>
             </div>
           </form>
 
