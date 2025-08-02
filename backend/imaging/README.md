@@ -4,7 +4,7 @@ This service handles medical image processing using MONAI for segmentation, dete
 
 ## Setup
 
-REQUIRES GPU SUPPORT
+REQUIRES WORKSTATION W/ GPU SUPPORT
 
 1. Install dependencies:
    ```bash
