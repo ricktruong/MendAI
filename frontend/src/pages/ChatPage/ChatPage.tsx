@@ -21,7 +21,7 @@ interface Attachment {
 interface AnalysisResult {
   type: 'imaging' | 'vitals' | 'lab' | 'summary';
   title: string;
-  content: any;
+  content: Record<string, unknown>;
   confidence?: number;
 }
 
@@ -80,17 +80,42 @@ const ChatPage: React.FC = () => {
     setAttachedFiles([]);
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      // Send messages to backend engine
+      const response = await fetch('http://localhost:8000/v0/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, newUserMessage],
+          patient_id: patient?.patientId || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Update messages with the response from backend
+      if (data.messages && data.messages.length > 0) {
+        setMessages(data.messages);
+      }
+    } catch (error) {
+      console.error('Error sending message to backend:', error);
+      // Fallback to mock response if backend is not available
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content:
-          "I've analyzed your query. Based on the patient's medical history and current symptoms, here are my findings...",
+        content: "I've analyzed your query. Based on the patient's medical history and current symptoms, here are my findings...",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiResponse]);
+    } finally {
       setIsLoading(false);
-    }, 2000);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

@@ -11,7 +11,7 @@ This is the main backend engine for the integrated medical workflow solution. It
 
 2. Run the service:
    ```bash
-   poetry run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   poetry run uvicorn engine.main:app --reload --host 0.0.0.0 --port 8000
    ```
 
 ## Environment Variables

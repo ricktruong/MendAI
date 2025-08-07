@@ -22,6 +22,7 @@ const SignUpPage: React.FC = () => {
 
     setIsLoading(true);
 
+    // TODO: Push new doctor account to backend Patient database
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
       console.log('User registered');
