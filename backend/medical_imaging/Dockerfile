@@ -20,7 +20,7 @@ RUN mkdir -p /log && chown app /log
 RUN python -m pip install --upgrade pip poetry --no-cache-dir
 
 # Copy poetry files
-COPY biomedical_llm/pyproject.toml ./
+COPY medical_imaging/pyproject.toml ./
 
 # Copy common package into container
 COPY common/ ../common/
@@ -32,11 +32,11 @@ RUN poetry config virtualenvs.create false
 RUN --mount=type=cache,target=/root/.cache/pypoetry \
     poetry install --no-interaction --no-ansi
 
-# Copy Biomedical LLM service code into container
-COPY --chown=app biomedical_llm/ ./
+# Copy Medical Imaging service code into container
+COPY --chown=app medical_imaging/ ./
 
 USER app
 
-EXPOSE 8003
+EXPOSE 8002
 
-CMD ["poetry", "run", "uvicorn", "biomedical_llm.main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["poetry", "run", "uvicorn", "medical_imaging.main:app", "--host", "0.0.0.0", "--port", "8002"] 

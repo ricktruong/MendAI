@@ -2,7 +2,7 @@
 
 A comprehensive healthcare application that enables healthcare professionals to access patient data, process medical scans, analyze laboratory results, and receive AI-assisted patient prognosis through a seamless, integrated medical workflow platform.
 
-## Architecture
+## 🏗️ Architecture
 
 ```
 [ React Frontend (Vite, TSX) ]
@@ -18,105 +18,227 @@ A comprehensive healthcare application that enables healthcare professionals to 
  Service
 ```
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 Project/
 ├── frontend/                # React + Vite + TypeScript
+│   ├── src/                 # Source code
+│   ├── Dockerfile           # Frontend container
+│   └── nginx.conf           # Nginx configuration
 ├── backend/
 │   ├── engine/              # Main backend engine (API gateway, routing)
-│   ├── patient-data/        # Patient data service (Epic FHIR integration)
+│   ├── patient_data/        # Patient data service (Epic FHIR integration)
 │   ├── imaging/             # Medical imaging service (MONAI)
-│   └── biomedical-llm/      # LLM service (MONAI + Transformers)
-├── common/                  # Common code, types, utilities
+│   ├── biomedical_llm/      # LLM service (MONAI + Transformers)
+│   ├── common/              # Shared code and utilities
+│   └── docker-compose.yml   # Backend services orchestration
+├── docker-compose.yml       # Complete application orchestration
+├── Makefile                 # Management commands
+└── README.md               # This file
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-- Node.js (for frontend)
+### Option 1: Docker (Recommended)
+
+#### Prerequisites
+- Docker
+- Docker Compose
+
+#### Setup
+```bash
+# Clone the repository
+git clone <repository-url>
+cd MendAI
+
+# Build and start all services
+make build
+make up
+
+# Access the application
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000
+```
+
+#### Management Commands
+```bash
+make help          # Show all available commands
+make build         # Build all Docker images
+make up            # Start all services
+make down          # Stop all services
+make logs          # View logs
+make status        # Check service status
+make health        # Check service health
+```
+
+### Option 2: Local Development
+
+#### Prerequisites
+- Node.js 18+ (for frontend)
 - Python 3.9+ (for backend services)
 - Poetry (for Python dependency management)
 
-### Frontend Setup
-Follow frontend/README.md for Front-end setup
+#### Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### Backend Services Setup
+#### Backend Services Setup
 
-#### Backend Engine
-Follow backend/engine/README.md for Backend Engine setup
+Each service can be run independently:
 
-#### Patient Data Service
-Follow backend/patient-data/README.md for Patient Data Service setup
+```bash
+# Backend Engine
+cd backend/engine
+poetry install
+poetry run uvicorn engine.main:app --host 0.0.0.0 --port 8000
 
-#### Medical Imaging Service
-Follow backend/imaging/README.md for Medical Imaging Service setup
+# Patient Data Service
+cd backend/patient_data
+poetry install
+poetry run uvicorn patient_data.main:app --host 0.0.0.0 --port 8001
 
-#### Biomedical LLM Service
-Follow backend/biomedical-llm/README.md for Biomedical LLM Service setup
+# Imaging Service
+cd backend/imaging
+poetry install
+poetry run uvicorn imaging.main:app --host 0.0.0.0 --port 8002
+
+# Biomedical LLM Service
+cd backend/biomedical_llm
+poetry install
+poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003
+```
 
 ## 🔧 Services
 
-### Backend Engine
+### Frontend (Port 3000)
+- React-based user interface
+- TypeScript for type safety
+- Vite for fast development
+- Responsive design for healthcare workflows
+
+### Backend Engine (Port 8000)
 - API gateway and routing
 - Authentication and authorization
 - Request aggregation
 - Service orchestration
+- Health monitoring
 
-### Patient Data Service
+### Patient Data Service (Port 8001)
 - Epic FHIR API integration
 - Patient data storage and retrieval
 - Biometric data management
 - Medical history tracking
+- Secure data handling
 
-### Medical Imaging Service
+### Medical Imaging Service (Port 8002)
 - DICOM file processing
 - Medical image segmentation
 - Disease detection and classification
 - MONAI model integration
+- Image preprocessing and analysis
 
-### Biomedical LLM Service
+### Biomedical LLM Service (Port 8003)
 - Multimodal image-text processing
 - Biomedical chatbot functionality
 - AI-assisted patient prognosis
 - Clinical text analysis
+- Medical knowledge integration
 
-## Tech Stack
-
-Current tech stack
+## 🛠️ Tech Stack
 
 ### Frontend
-- **React** - UI framework
+- **React 18** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
-- **TailwindCSS** - Styling (planned)
+- **CSS Modules** - Component styling
 
 ### Backend
 - **FastAPI** - Web framework for all services
 - **Poetry** - Dependency management
 - **Uvicorn** - ASGI server
+- **Pydantic** - Data validation
 
 ### Medical Imaging
 - **MONAI** - Medical AI framework
 - **PyTorch** - Deep learning framework
+- **DICOM** - Medical image formats
 
 ### AI/ML
 - **Transformers** - HuggingFace transformers library
 - **MONAI** - Multimodal medical AI
+- **NumPy/SciPy** - Scientific computing
 
 ### Data Integration
 - **Epic FHIR API** - Patient data integration
-- **DICOM** - Medical image formats
+- **REST APIs** - Service communication
 
+### Infrastructure
+- **Docker** - Containerization
+- **Docker Compose** - Service orchestration
+- **Nginx** - Frontend web server
 
-## Contributing
+## 🔍 Monitoring & Health Checks
+
+All services include health check endpoints:
+- Frontend: `http://localhost:3000/health`
+- Backend Engine: `http://localhost:8000/health`
+- Patient Data: `http://localhost:8001/health`
+- Imaging: `http://localhost:8002/health`
+- Biomedical LLM: `http://localhost:8003/health`
+
+## 🔒 Security Features
+
+- Non-root container users
+- Network isolation between services
+- Health monitoring
+- Secure API endpoints
+- Environment variable configuration
+
+## 🚀 Production Deployment
+
+### Environment Variables
+Create `.env` files for each service:
+```bash
+# Example: backend/engine/.env
+LOG_LEVEL=WARNING
+DATABASE_URL=your_database_url
+API_KEY=your_api_key
+```
+
+### Scaling
+```bash
+# Scale specific services
+docker-compose up -d --scale imaging=2
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Test thoroughly
-5. Submit a pull request
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Submit a pull request
 
-## License
+## 📚 Documentation
+
+- [Docker Setup Guide](DOCKER_README.md) - Detailed Docker deployment instructions
+- [Frontend README](frontend/README.md) - Frontend development guide
+- [Backend Service READMEs](backend/) - Individual service documentation
+
+## 📄 License
 
 This project is for educational and research purposes.
+
+## 🆘 Support
+
+For issues and questions:
+1. Check the troubleshooting section in the Docker README
+2. Review service-specific documentation
+3. Check service logs: `make logs`
+4. Verify service health: `make health`
