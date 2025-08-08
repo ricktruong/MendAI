@@ -207,6 +207,7 @@ dmypy.json
 *.xml
 *.yaml
 *.yml
+!docker-compose.yml
 data/
 datasets/
 samples/
