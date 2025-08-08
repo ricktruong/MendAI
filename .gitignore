@@ -224,7 +224,6 @@ test_data/
 *.old
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Kubernetes

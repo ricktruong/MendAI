@@ -1,0 +1,64 @@
+# GPU-enabled Python base image for medical imaging service
+FROM nvidia/cuda:11.8-runtime-ubuntu20.04
+# TODO: USE MONAI DICOM-based image
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3.9 \
+    python3.9-pip \
+    python3.9-dev \
+    build-essential \
+    curl \
+    git \
+    wget \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create symbolic link for python
+RUN ln -s /usr/bin/python3.9 /usr/bin/python
+
+# Set working directory
+WORKDIR /app
+
+# Create a non-root user
+RUN useradd -m app
+
+# Create log directory in container
+RUN mkdir -p /log && chown app /log
+
+# Install Poetry
+RUN python -m pip install --upgrade pip poetry --no-cache-dir
+
+# Copy poetry files
+COPY medical_imaging/pyproject.toml ./
+
+# Copy common package into container
+COPY common/ ../common/
+
+# Configure Poetry to not create virtual environment (since we're in a container)
+RUN poetry config virtualenvs.create false
+
+# Install Python dependencies
+RUN --mount=type=cache,target=/root/.cache/pypoetry \
+    poetry install --no-interaction --no-ansi
+
+# Copy Medical Imaging service code into container
+COPY --chown=app medical_imaging/ ./
+
+# Create directories for models and data
+RUN mkdir -p /app/models /app/data && chown -R app:app /app
+
+USER app
+
+EXPOSE 8002
+
+CMD ["poetry", "run", "uvicorn", "medical_imaging.main:app", "--host", "0.0.0.0", "--port", "8002"]

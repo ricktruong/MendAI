@@ -45,20 +45,34 @@ Project/
 #### Prerequisites
 - Docker
 - Docker Compose
+- NVIDIA Docker Runtime (for GPU support - optional)
 
 #### Setup
+
+**Development (CPU-only):**
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd MendAI
 
-# Build and start all services
-make build
-make up
+# Start all services with CPU-only containers
+docker-compose up --build
 
 # Access the application
 # Frontend: http://localhost:3000
 # Backend API: http://localhost:8000
+```
+
+**Production with GPU Support:**
+```bash
+# Start all services with GPU-enabled containers for medical_imaging and biomedical_llm
+docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+```
+
+**Production (CPU-only):**
+```bash
+# Start all services with production CPU containers
+docker-compose up --build
 ```
 
 #### Management Commands
@@ -71,6 +85,12 @@ make logs          # View logs
 make status        # Check service status
 make health        # Check service health
 ```
+
+#### Docker Configuration
+- `docker-compose.yml` - Main configuration with all services (CPU-only)
+- `docker-compose.gpu.yml` - GPU-enabled overrides for medical_imaging and biomedical_llm
+
+For detailed Docker setup instructions, see [DOCKER_SETUP.md](DOCKER_SETUP.md).
 
 ### Option 2: Local Development
 
