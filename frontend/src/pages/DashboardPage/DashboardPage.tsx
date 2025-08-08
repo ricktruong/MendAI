@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './DashboardPage.css';
 
 interface CtCase {
@@ -17,8 +17,7 @@ const initialCases: CtCase[] = [
 
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [ctCases, setCtCases] = useState<CtCase[]>(initialCases);
+  const [ctCases] = useState<CtCase[]>(initialCases);
 
   return (
     <div className="dashboard-page">
