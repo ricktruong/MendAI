@@ -29,49 +29,49 @@ help:
 
 # CPU commands (default)
 build:
-	docker-compose build
+	docker compose build
 
 up:
-	docker-compose up -d
+	docker compose up -d
 
 down:
-	docker-compose down
+	docker compose down
 
 restart:
-	docker-compose restart
+	docker compose restart
 
 logs:
-	docker-compose logs -f
+	docker compose logs -f
 
 clean:
-	docker-compose down -v --rmi all --remove-orphans
+	docker compose down -v --rmi all --remove-orphans
 
 # GPU commands
 gpu-build:
-	docker-compose -f docker-compose.yml -f docker-compose.gpu.yml build
+	docker compose -f docker compose.yml -f docker compose.gpu.yml build
 
 gpu-up:
-	docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+	docker compose -f docker compose.yml -f docker compose.gpu.yml up -d
 
 gpu-down:
-	docker-compose -f docker-compose.yml -f docker-compose.gpu.yml down
+	docker compose -f docker compose.yml -f docker compose.gpu.yml down
 
 gpu-logs:
-	docker-compose -f docker-compose.yml -f docker-compose.gpu.yml logs -f
+	docker compose -f docker compose.yml -f docker compose.gpu.yml logs -f
 
 # Backend only commands
 backend-build:
-	docker-compose build engine patient_data medical_imaging biomedical_llm
+	docker compose build engine patient_data medical_imaging biomedical_llm
 
 backend-up:
-	docker-compose up -d engine patient_data medical_imaging biomedical_llm
+	docker compose up -d engine patient_data medical_imaging biomedical_llm
 
 backend-down:
-	docker-compose stop engine patient_data medical_imaging biomedical_llm
+	docker compose stop engine patient_data medical_imaging biomedical_llm
 
 # Utility commands
 status:
-	docker-compose ps
+	docker compose ps
 
 health:
 	@echo "Checking service health..."

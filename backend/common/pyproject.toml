@@ -1,5 +1,6 @@
 [tool.poetry]
 name = "common"
+authors = ["Rick Truong <rickvtruong@gmail.com>"]
 version = "0.1.0"
 description = "Common package for the project"
 
