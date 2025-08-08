@@ -36,4 +36,4 @@ class ChatRequest(CommonRequest):
 
 class ChatResponse(CommonResponse):
     messages: List[Message]
-    analysis_results: Optional[List[AnalysisResult]] = None 
+    patient_id: Optional[str] = None

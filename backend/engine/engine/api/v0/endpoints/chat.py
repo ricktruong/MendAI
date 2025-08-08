@@ -47,9 +47,9 @@ async def chat(request: ChatRequest) -> ChatResponse:
         updated_messages = request.messages + [ai_response]
         
         response = ChatResponse(
+            session_id=request.session_id,
             messages=updated_messages,
-            analysis_results=ai_response.analysis_results,
-            session_id=request.session_id
+            patient_id=request.patient_id
         )
         
         logger.info(f"Chat response generated successfully for session {request.session_id}")
