@@ -48,16 +48,16 @@ clean:
 
 # GPU commands
 gpu-build:
-	docker compose -f docker compose.yml -f docker compose.gpu.yml build
+	docker compose -f docker-compose.yml -f docker-compose.gpu.yml build
 
 gpu-up:
-	docker compose -f docker compose.yml -f docker compose.gpu.yml up -d
+	docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 
 gpu-down:
-	docker compose -f docker compose.yml -f docker compose.gpu.yml down
+	docker compose -f docker-compose.yml -f docker-compose.gpu.yml down
 
 gpu-logs:
-	docker compose -f docker compose.yml -f docker compose.gpu.yml logs -f
+	docker compose -f docker-compose.yml -f docker-compose.gpu.yml logs -f
 
 # Backend only commands
 backend-build:

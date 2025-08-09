@@ -1,6 +1,8 @@
-# MendAI: Your Agentic AI Healthcare Assistant
+# MendAI: A Multimodal AI Assistant for Smarter Clinical Decision-Making
 
-A comprehensive healthcare application that enables healthcare professionals to access patient data, process medical scans, analyze laboratory results, and receive AI-assisted patient prognosis through a seamless, integrated medical workflow platform.
+MendAI, your agentic AI healthcare assistant, seamlessly integrates with your hospital’s EHR system, patients’ data, medical scans, laboratory results, and clinical text, to give to healthcare professionals like you AI-assisted patient prognosis all within one seamless, integrated medical workflow solution.
+- Customer: Hospital/healthcare professionals
+- Project Direction: Application which speeds up doctors diagnoses and work (medical scan processing, biometric data analysis, medical notes analysis) + scientists can manage the models our application provides, finetune, enhance to match hospitals' and patients' needs
 
 ## 🏗️ Architecture
 
@@ -29,10 +31,9 @@ Project/
 ├── backend/
 │   ├── engine/              # Main backend engine (API gateway, routing)
 │   ├── patient_data/        # Patient data service (Epic FHIR integration)
-│   ├── imaging/             # Medical imaging service (MONAI)
+│   ├── medical_imaging/     # Medical imaging service (MONAI)
 │   ├── biomedical_llm/      # LLM service (MONAI + Transformers)
-│   ├── common/              # Shared code and utilities
-│   └── docker-compose.yml   # Backend services orchestration
+│   └── common/              # Shared code and utilities
 ├── docker-compose.yml       # Complete application orchestration
 ├── Makefile                 # Management commands
 └── README.md               # This file
@@ -43,36 +44,55 @@ Project/
 ### Option 1: Docker (Recommended)
 
 #### Prerequisites
-- Docker
-- Docker Compose
-- NVIDIA Docker Runtime (for GPU support - optional)
+
+**Required:**
+- **Docker Desktop** - Download from [docker.com](https://www.docker.com/products/docker-desktop)
+- **Docker Compose** - Included with Docker Desktop
+
+**Optional (for local development):**
+- **Python 3.9+** - Required for backend local development
+- **Node.js 18+** - Required for frontend local development  
+- **Poetry** - Python dependency management (`curl -sSL https://install.python-poetry.org | python3 -`)
 
 #### Setup
 
-**Development (CPU-only):**
+**Automated Setup (Recommended):**
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd MendAI
 
-# Start all services with CPU-only containers
-docker-compose up --build
+# Run the automated setup script
+./setup.sh
+
+# Start all services
+make up
 
 # Access the application
 # Frontend: http://localhost:3000
 # Backend API: http://localhost:8000
 ```
 
-**Production with GPU Support:**
+The setup script will:
+- Check all prerequisites
+- Create environment files for each service
+- Set up backend and frontend dependencies
+- Validate the project structure
+- Optionally test Docker builds
+
+**Manual Setup:**
 ```bash
-# Start all services with GPU-enabled containers for medical_imaging and biomedical_llm
-docker-compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+# If you prefer manual setup or the script fails
+make build    # Build all images
+make up       # Start all services
 ```
 
-**Production (CPU-only):**
+**GPU Support (for AI/ML acceleration):**
 ```bash
-# Start all services with production CPU containers
-docker-compose up --build
+# Requires NVIDIA Docker Runtime
+# Install: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+make gpu-build
+make gpu-up
 ```
 
 #### Management Commands
@@ -90,14 +110,23 @@ make health        # Check service health
 - `docker-compose.yml` - Main configuration with all services (CPU-only)
 - `docker-compose.gpu.yml` - GPU-enabled overrides for medical_imaging and biomedical_llm
 
-For detailed Docker setup instructions, see [DOCKER_SETUP.md](DOCKER_SETUP.md).
+**Troubleshooting:**
+- If Docker build fails, run `./setup.sh` to check prerequisites and fix common issues
+- Use `make logs` to view service logs
+- Use `make health` to check service status
+- Environment files are automatically created in each service directory
 
 ### Option 2: Local Development
 
 #### Prerequisites
-- Node.js 18+ (for frontend)
-- Python 3.9+ (for backend services)
-- Poetry (for Python dependency management)
+- **Node.js 18+** - For frontend development
+- **Python 3.9+** - For backend services
+- **Poetry** - Python dependency management
+
+**Install Poetry:**
+```bash
+curl -sSL https://install.python-poetry.org | python3 -
+```
 
 #### Frontend Setup
 ```bash
@@ -111,7 +140,7 @@ npm run dev
 Each service can be run independently:
 
 ```bash
-# Backend Engine
+# Backend Engine (Main API Gateway)
 cd backend/engine
 poetry install
 poetry run uvicorn engine.main:app --host 0.0.0.0 --port 8000
@@ -121,16 +150,18 @@ cd backend/patient_data
 poetry install
 poetry run uvicorn patient_data.main:app --host 0.0.0.0 --port 8001
 
-# Imaging Service
-cd backend/imaging
+# Medical Imaging Service
+cd backend/medical_imaging
 poetry install
-poetry run uvicorn imaging.main:app --host 0.0.0.0 --port 8002
+poetry run uvicorn medical_imaging.main:app --host 0.0.0.0 --port 8002
 
 # Biomedical LLM Service
 cd backend/biomedical_llm
 poetry install
 poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003
 ```
+
+**Note:** The setup script (`./setup.sh`) can also prepare the local development environment by installing dependencies and creating necessary configuration files.
 
 ## 🔧 Services
 
@@ -176,25 +207,25 @@ poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003
 - **Vite** - Build tool and dev server
 - **CSS Modules** - Component styling
 
-### Backend
+### Backend Engine
 - **FastAPI** - Web framework for all services
 - **Poetry** - Dependency management
 - **Uvicorn** - ASGI server
 - **Pydantic** - Data validation
 
-### Medical Imaging
+### Patient Data Service
+- **Epic FHIR API** - Patient data integration
+- **REST APIs** - Service communication
+
+### Medical Imaging Service
 - **MONAI** - Medical AI framework
 - **PyTorch** - Deep learning framework
 - **DICOM** - Medical image formats
 
-### AI/ML
+### Biomedical LLM Service
 - **Transformers** - HuggingFace transformers library
 - **MONAI** - Multimodal medical AI
 - **NumPy/SciPy** - Scientific computing
-
-### Data Integration
-- **Epic FHIR API** - Patient data integration
-- **REST APIs** - Service communication
 
 ### Infrastructure
 - **Docker** - Containerization
@@ -221,12 +252,29 @@ All services include health check endpoints:
 ## 🚀 Production Deployment
 
 ### Environment Variables
-Create `.env` files for each service:
+
+Environment files are automatically created by the setup script. You can customize them:
+
 ```bash
-# Example: backend/engine/.env
+# Backend services
+backend/engine/.env
+backend/patient_data/.env
+backend/medical_imaging/.env
+backend/biomedical_llm/.env
+
+# Frontend
+frontend/.env
+```
+
+Example configuration:
+```bash
+# backend/engine/.env
+ENVIRONMENT=production
+DEBUG=false
 LOG_LEVEL=WARNING
-DATABASE_URL=your_database_url
-API_KEY=your_api_key
+SERVICE_PORT=8000
+SECRET_KEY=your-production-secret-key
+JWT_SECRET=your-jwt-secret
 ```
 
 ### Scaling
@@ -245,11 +293,33 @@ docker-compose up -d --scale imaging=2
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Submit a pull request
 
+## 🛠️ Setup Script Details
+
+The `setup.sh` script provides automated environment setup:
+
+**What it does:**
+- Checks prerequisites (Docker, Node.js, Python, Poetry)
+- Fixes common Docker issues and cleans build cache
+- Creates environment files for all services with default configurations
+- Sets up backend dependencies using Poetry
+- Sets up frontend dependencies using npm
+- Validates project structure
+- Optionally tests Docker builds
+
+**Usage:**
+```bash
+./setup.sh                    # Run full setup
+./setup.sh --help            # Show help (coming soon)
+```
+
+**Manual environment file creation:**
+If you prefer to create environment files manually, refer to the templates created by the setup script or see the individual service documentation.
+
 ## 📚 Documentation
 
-- [Docker Setup Guide](DOCKER_README.md) - Detailed Docker deployment instructions
 - [Frontend README](frontend/README.md) - Frontend development guide
 - [Backend Service READMEs](backend/) - Individual service documentation
+- Run `make help` for available Docker commands
 
 ## 📄 License
 
