@@ -88,8 +88,8 @@ print(prompt)
 #------------------------------------------------
 # Load BioGPT
 print("\nLoading BioGPT...")
-biogpt_tokenizer = BioGptTokenizer.from_pretrained("microsoft/BioGPT-Large")
-biogpt_model = BioGptForCausalLM.from_pretrained("microsoft/BioGPT-Large")
+biogpt_tokenizer = BioGptTokenizer.from_pretrained("microsoft/BioGPT-Large-PubMedQA")
+biogpt_model = BioGptForCausalLM.from_pretrained("microsoft/BioGPT-Large-PubMedQA")
 
 
 # Feed into BioGPT

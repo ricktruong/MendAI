@@ -1,10 +1,11 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import BioGptTokenizer, BioGptForCausalLM
 
 # Load BioGPT-Large PubMedQA model
 print("\nLoading BioGPT-Large-PubMedQA...")
-tokenizer = AutoTokenizer.from_pretrained("microsoft/BioGPT-Large-PubMedQA")
-model = AutoModelForCausalLM.from_pretrained("microsoft/BioGPT-Large-PubMedQA")
+tokenizer = BioGptTokenizer.from_pretrained("microsoft/BioGPT-Large-PubMedQA")
+model = BioGptForCausalLM.from_pretrained("microsoft/BioGPT-Large-PubMedQA")
 tokenizer.pad_token = tokenizer.eos_token  # Required for attention mask padding
 
 # Build the QA-style prompt
@@ -23,11 +24,10 @@ eos_id = getattr(tokenizer, "eos_token_id", tokenizer.convert_tokens_to_ids("</s
 with torch.no_grad():
     outputs = model.generate(
         **inputs,
-        max_new_tokens=100,
-        do_sample=True,
-        top_p=0.95,
-        top_k=40,
-        temperature=0.8,
+        max_new_tokens=256,
+        num_beams=1,
+        do_sample=False,
+        temperature=0.7,
         eos_token_id=eos_id
     )
 
