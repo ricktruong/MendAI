@@ -2,6 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 
+interface SignUpResponse {
+  success: boolean;
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+  };
+  error?: string;
+  message?: string;
+}
+
 const SignUpPage: React.FC = () => {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -11,24 +23,59 @@ const SignUpPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    // 客户端验证
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
     }
 
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
+
     setIsLoading(true);
 
-    // TODO: Push new doctor account to backend Patient database
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('User registered');
-      navigate('/login');
+      const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role: 'doctor' // 默认角色为医生
+        }),
+      });
+
+      const result: SignUpResponse = await response.json();
+
+      if (response.ok && result.success) {
+        console.log('User registered successfully');
+        // 可以显示成功消息或直接导航到登录页
+        alert('Account created successfully! Please sign in.');
+        navigate('/login');
+      } else {
+        setError(result.error || 'Registration failed. Please try again.');
+      }
     } catch (err) {
-      setError('Signup failed. Please try again.');
+      console.error('Registration error:', err);
+      setError(err instanceof Error ? err.message : 'Network error. Please try again.');
+      
+      // 开发环境下的fallback
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Using development fallback registration');
+        alert('Registration successful (dev mode)! Please sign in.');
+        navigate('/login');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -66,6 +113,7 @@ const SignUpPage: React.FC = () => {
                 placeholder="Dr. Jane Doe"
                 required
                 disabled={isLoading}
+                minLength={2}
               />
             </div>
 
@@ -89,9 +137,10 @@ const SignUpPage: React.FC = () => {
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a password"
+                placeholder="Create a password (min 8 characters)"
                 required
                 disabled={isLoading}
+                minLength={8}
               />
             </div>
 
@@ -105,6 +154,7 @@ const SignUpPage: React.FC = () => {
                 placeholder="Re-enter your password"
                 required
                 disabled={isLoading}
+                minLength={8}
               />
             </div>
 

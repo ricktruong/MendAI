@@ -1,56 +1,46 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './ChatPage.css';
-
-interface Message {
-  id: string;
-  type: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  attachments?: Attachment[];
-  analysisResults?: AnalysisResult[];
-}
-
-interface Attachment {
-  id: string;
-  type: 'image' | 'document' | 'lab-result';
-  name: string;
-  url?: string;
-}
-
-interface AnalysisResult {
-  type: 'imaging' | 'vitals' | 'lab' | 'summary';
-  title: string;
-  content: Record<string, unknown>;
-  confidence?: number;
-}
+import { apiService } from '../../services/api';
+import type { Message } from '../../services/api';
 
 const ChatPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const patient = location.state?.patient;
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       type: 'assistant',
-      content:
-        "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today? You can ask me about patient records, upload medical images for analysis, or request clinical summaries.",
-      timestamp: new Date(),
+      content: patient
+        ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. I have access to their CT scan images and can help analyze them. What would you like to know about this patient?`
+        : "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today?",
+      timestamp: new Date().toISOString(),
     },
   ]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showUploadPanel, setShowUploadPanel] = useState(true);
-  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [showPatientPanel, setShowPatientPanel] = useState(true);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [sessionId, setSessionId] = useState<string>('');
 
   const ctImages = [
     '/CT_head_John1.jpg',
     '/CT_head_John2.jpg',
     '/CT_head_John3.jpg',
   ];
+
+  // Check authentication status
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+  }, [navigate]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,59 +50,49 @@ const ChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() && attachedFiles.length === 0) return;
+    if (!inputMessage.trim()) return;
 
     const newUserMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
       content: inputMessage,
-      timestamp: new Date(),
-      attachments: attachedFiles.map((file, index) => ({
-        id: `file-${index}`,
-        type: file.type.startsWith('image/') ? 'image' : 'document',
-        name: file.name,
-      })),
+      timestamp: new Date().toISOString(),
     };
 
-    setMessages([...messages, newUserMessage]);
+    const currentMessages = [...messages, newUserMessage];
+    setMessages(currentMessages);
+    const currentInputMessage = inputMessage;
     setInputMessage('');
-    setAttachedFiles([]);
     setIsLoading(true);
 
     try {
-      // Send messages to backend engine
-      const response = await fetch('http://localhost:8000/v0/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, newUserMessage],
-          patient_id: patient?.patientId || null,
-        }),
-      });
+      const chatRequest = {
+        messages: currentMessages,
+        patient_id: patient?.id || patient?.patientId,
+        session_id: sessionId,
+      };
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const response = await apiService.sendChatMessage(chatRequest);
       
-      // Update messages with the response from backend
-      if (data.messages && data.messages.length > 0) {
-        setMessages(data.messages);
+      if (response.session_id && !sessionId) {
+        setSessionId(response.session_id);
       }
+      
+      setMessages(response.messages);
     } catch (error) {
       console.error('Error sending message to backend:', error);
-      // Fallback to mock response if backend is not available
-      const aiResponse: Message = {
+      
+      // Fallback response for development
+      const fallbackResponse: Message = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: "I've analyzed your query. Based on the patient's medical history and current symptoms, here are my findings...",
-        timestamp: new Date(),
+        content: `I've received your message: "${currentInputMessage}". ${patient ? `Based on ${patient.patientName || patient.patient_name}'s CT scan data, ` : ''}I can provide clinical insights and analysis. However, I'm currently experiencing connectivity issues with the backend services.`,
+        timestamp: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, aiResponse]);
+      
+      setMessages(prev => [...prev, fallbackResponse]);
     } finally {
       setIsLoading(false);
     }
@@ -123,10 +103,6 @@ const ChatPage: React.FC = () => {
       e.preventDefault();
       handleSendMessage();
     }
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachedFiles(attachedFiles.filter((_, i) => i !== index));
   };
 
   const handlePrevImage = (e: React.MouseEvent) => {
@@ -150,36 +126,62 @@ const ChatPage: React.FC = () => {
           </span>
         </div>
         <div className="header-right">
-          <button className="header-button" onClick={() => setShowUploadPanel(!showUploadPanel)}>
-            📁 Patient Info
+          <button className="header-button" onClick={() => setShowPatientPanel(!showPatientPanel)}>
+            Patient Info
           </button>
-          <button className="header-button">❓ Help</button>
+          <button className="header-button" onClick={() => navigate('/dashboard')}>
+            Dashboard
+          </button>
         </div>
       </div>
 
       <div className="chat-container">
-        {showUploadPanel && (
+        {showPatientPanel && patient && (
           <div className="upload-sidebar">
-            {patient && (
-              <div className="patient-info-card">
-                <h3>Patient Information</h3>
-                <p><strong>Name:</strong> {patient.patientName}</p>
-                <p><strong>Gender:</strong> Male</p>
-                <p><strong>Age:</strong> 54</p>
-                <p><strong>ID:</strong> CT-2025001</p>
-                <p><strong>CT File:</strong> {patient.fileName}</p>
-                <p><strong>Date:</strong> {patient.uploadedAt}</p>
+            <div className="patient-info-card">
+              <h3>Patient Information</h3>
+              <p><strong>Name:</strong> {patient.patientName || patient.patient_name}</p>
+              <p><strong>Gender:</strong> Male</p>
+              <p><strong>Age:</strong> 54</p>
+              <p><strong>ID:</strong> {patient.id}</p>
+              <p><strong>CT File:</strong> {patient.fileName || patient.file_name}</p>
+              <p><strong>Date:</strong> {patient.uploadedAt || patient.uploaded_at}</p>
 
-                <div className="ct-preview" style={{ marginTop: '1rem' }}>
+              <div className="ct-images-section" style={{ marginTop: '1rem' }}>
+                <h4>CT Scan Images</h4>
+                <div className="ct-preview">
                   <img
                     src={ctImages[currentImageIndex]}
-                    alt="CT Preview"
+                    alt={`CT Scan ${currentImageIndex + 1}`}
                     style={{ width: '100%', borderRadius: '8px', cursor: 'pointer' }}
                     onClick={() => setPreviewModalOpen(true)}
                   />
+                  <div className="image-navigation" style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    marginTop: '0.5rem',
+                    gap: '1rem'
+                  }}>
+                    <button 
+                      onClick={(e) => handlePrevImage(e)}
+                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    >
+                      ◀
+                    </button>
+                    <span style={{ fontSize: '0.9rem', color: '#666' }}>
+                      {currentImageIndex + 1} of {ctImages.length}
+                    </span>
+                    <button 
+                      onClick={(e) => handleNextImage(e)}
+                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    >
+                      ▶
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -206,7 +208,7 @@ const ChatPage: React.FC = () => {
                     {message.type === 'user' ? 'You' : 'MendAI'}
                   </span>
                   <span className="message-time">
-                    {message.timestamp.toLocaleTimeString([], {
+                    {new Date(message.timestamp).toLocaleTimeString([], {
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -214,6 +216,36 @@ const ChatPage: React.FC = () => {
                 </div>
                 <div className="message-content">
                   {message.content}
+                  
+
+                  {message.analysis_results && message.analysis_results.length > 0 && (
+                    <div className="analysis-results">
+                      {message.analysis_results.map((result, index) => (
+                        <div key={index} className="analysis-card">
+                          <h4>{result.title}</h4>
+                          <div className="analysis-content">
+                            {typeof result.content === 'string' 
+                              ? result.content 
+                              : JSON.stringify(result.content, null, 2)
+                            }
+                          </div>
+                          {result.confidence && (
+                            <div>
+                              <div className="confidence-bar">
+                                <div 
+                                  className="confidence-fill" 
+                                  style={{ width: `${result.confidence * 100}%` }}
+                                ></div>
+                              </div>
+                              <div className="confidence-text">
+                                Confidence: {(result.confidence * 100).toFixed(1)}%
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -235,30 +267,24 @@ const ChatPage: React.FC = () => {
           </div>
 
           <div className="chat-input-container">
-            {attachedFiles.length > 0 && (
-              <div className="attached-files">
-                {attachedFiles.map((file, index) => (
-                  <div key={index} className="attached-file">
-                    <span>{file.name}</span>
-                    <button onClick={() => removeAttachment(index)}>×</button>
-                  </div>
-                ))}
-              </div>
-            )}
             <div className="chat-input">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask about patient data, upload medical images, or request analysis..."
+                placeholder={patient 
+                  ? `Ask me about ${patient.patientName || patient.patient_name}'s CT scan or medical condition...`
+                  : "Ask me about medical analysis or patient data..."
+                }
                 rows={1}
+                disabled={isLoading}
               />
               <button
                 className="send-button"
                 onClick={handleSendMessage}
-                disabled={!inputMessage.trim() && attachedFiles.length === 0}
+                disabled={!inputMessage.trim() || isLoading}
               >
-                ➤
+                Send
               </button>
             </div>
           </div>

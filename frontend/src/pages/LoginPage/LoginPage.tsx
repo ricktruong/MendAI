@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
+import { apiService } from '../../services/api';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,21 +15,24 @@ const LoginPage: React.FC = () => {
     setError('');
     setIsLoading(true);
 
-    // TODO: Implement actual authentication logic with backend
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo purposes - you'll need to implement actual auth
-      if (email && password) {
-        console.log('Login successful');
-        // Navigate to dashboard
+      const result = await apiService.login({ email, password });
+
+      if (result.success && result.token) {
+        // Store authentication info
+        localStorage.setItem('token', result.token);
+        if (result.user) {
+          localStorage.setItem('user', JSON.stringify(result.user));
+        }
+        
+        console.log('Login successful, navigating to dashboard');
         navigate('/dashboard');
       } else {
-        setError('Please enter valid credentials');
+        setError(result.error || 'Login failed - invalid credentials');
       }
     } catch (err) {
-      setError('Authentication failed. Please try again.');
+      console.error('Login error:', err);
+      setError(`Login failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -68,8 +72,6 @@ const LoginPage: React.FC = () => {
               </div>
             </div>
           </div>
-
-
         </div>
       </div>
 

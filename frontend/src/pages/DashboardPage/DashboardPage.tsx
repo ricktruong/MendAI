@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './DashboardPage.css';
+import { apiService } from '../../services/api';
+import type { DashboardData } from '../../services/api';
 
 interface CtCase {
   id: string;
@@ -9,15 +11,305 @@ interface CtCase {
   uploadedAt: string;
 }
 
-const initialCases: CtCase[] = [
-  { id: 'ct-001', patientName: 'John Doe', fileName: 'CT_Head_001.dcm', uploadedAt: '2025-07-27' },
-  { id: 'ct-002', patientName: 'Jane Smith', fileName: 'CT_Chest_045.dcm', uploadedAt: '2025-07-25' },
-  { id: 'ct-003', patientName: 'Maria Garcia', fileName: 'CT_Abdomen_102.dcm', uploadedAt: '2025-07-22' },
-];
-
 const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [ctCases] = useState<CtCase[]>(initialCases);
+  const [ctCases, setCtCases] = useState<CtCase[]>([]);
+  const [filteredCases, setFilteredCases] = useState<CtCase[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false);
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [newPatient, setNewPatient] = useState({
+    patientName: '',
+    fileName: '',
+    uploadedAt: new Date().toISOString().split('T')[0]
+  });
+  const [editPatient, setEditPatient] = useState({
+    id: '',
+    patientName: '',
+    fileName: '',
+    uploadedAt: ''
+  });
+  const [deletePatientId, setDeletePatientId] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Check authentication and load dashboard data
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    loadDashboardData();
+  }, [navigate]);
+
+  const loadDashboardData = async () => {
+    try {
+      setIsLoading(true);
+      const data: DashboardData = await apiService.getDashboardData();
+      
+      // Map the backend data to frontend format
+      const cases: CtCase[] = data.recent_cases.map(caseData => ({
+        id: caseData.id,
+        patientName: caseData.patient_name,
+        fileName: caseData.file_name,
+        uploadedAt: caseData.uploaded_at,
+      }));
+      
+      setCtCases(cases);
+      setFilteredCases(cases);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      
+      // Fallback to mock data
+      const fallbackCases = [
+        { id: 'ct-001', patientName: 'John Doe', fileName: 'CT_Head_001.dcm', uploadedAt: '2025-01-27' },
+        { id: 'ct-002', patientName: 'Jane Smith', fileName: 'CT_Chest_045.dcm', uploadedAt: '2025-01-25' },
+        { id: 'ct-003', patientName: 'Maria Garcia', fileName: 'CT_Abdomen_102.dcm', uploadedAt: '2025-01-22' },
+      ];
+      setCtCases(fallbackCases);
+      setFilteredCases(fallbackCases);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Search functionality
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredCases(ctCases);
+    } else {
+      const filtered = ctCases.filter(case_ =>
+        case_.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        case_.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        case_.id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredCases(filtered);
+    }
+  }, [searchQuery, ctCases]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+  };
+
+  // Add patient functionality
+  const handleAddPatient = () => {
+    setShowAddPatientModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddPatientModal(false);
+    setShowEditPatientModal(false);
+    setShowDeleteConfirm(false);
+    setNewPatient({
+      patientName: '',
+      fileName: '',
+      uploadedAt: new Date().toISOString().split('T')[0]
+    });
+    setEditPatient({
+      id: '',
+      patientName: '',
+      fileName: '',
+      uploadedAt: ''
+    });
+    setDeletePatientId('');
+    setSelectedFile(null);
+  };
+
+  const handlePatientInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewPatient(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setNewPatient(prev => ({
+        ...prev,
+        fileName: file.name
+      }));
+    }
+  };
+
+  const handleSubmitPatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newPatient.patientName.trim()) {
+      alert('Please enter a patient name');
+      return;
+    }
+    
+    if (!selectedFile) {
+      alert('Please select a file');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('patient_name', newPatient.patientName);
+      formData.append('uploaded_at', newPatient.uploadedAt);
+      formData.append('file', selectedFile);
+
+      // Call backend API
+      const response = await apiService.createPatient(formData);
+      
+      if (response.success && response.case) {
+        // Map backend response to frontend format
+        const newCase: CtCase = {
+          id: response.case.id,
+          patientName: response.case.patient_name,
+          fileName: response.case.file_name,
+          uploadedAt: response.case.uploaded_at
+        };
+
+        // Add to cases list
+        const updatedCases = [...ctCases, newCase];
+        setCtCases(updatedCases);
+        setFilteredCases(updatedCases);
+
+        // Close modal and reset form
+        handleCloseModal();
+        
+        alert('Patient added successfully!');
+      } else {
+        throw new Error(response.message || 'Failed to add patient');
+      }
+    } catch (error) {
+      console.error('Error adding patient:', error);
+      alert(`Failed to add patient: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Edit patient functionality
+  const handleEditPatient = (patient: CtCase) => {
+    setEditPatient({
+      id: patient.id,
+      patientName: patient.patientName,
+      fileName: patient.fileName,
+      uploadedAt: patient.uploadedAt
+    });
+    setShowEditPatientModal(true);
+  };
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditPatient(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleUpdatePatient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editPatient.patientName.trim()) {
+      alert('Please enter a patient name');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('patient_name', editPatient.patientName);
+      formData.append('uploaded_at', editPatient.uploadedAt);
+      
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
+
+      // Call backend API
+      const response = await apiService.updatePatient(editPatient.id, formData);
+      
+      if (response.success && response.case) {
+        // Update the case in the list
+        const updatedCases = ctCases.map(c => 
+          c.id === editPatient.id 
+            ? {
+                id: response.case.id,
+                patientName: response.case.patient_name,
+                fileName: response.case.file_name,
+                uploadedAt: response.case.uploaded_at
+              }
+            : c
+        );
+        
+        setCtCases(updatedCases);
+        setFilteredCases(updatedCases);
+
+        // Close modal and reset form
+        handleCloseModal();
+        
+        alert('Patient updated successfully!');
+      } else {
+        throw new Error(response.message || 'Failed to update patient');
+      }
+    } catch (error) {
+      console.error('Error updating patient:', error);
+      alert(`Failed to update patient: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete patient functionality
+  const handleDeletePatient = (patientId: string) => {
+    setDeletePatientId(patientId);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletePatientId) return;
+
+    try {
+      setIsLoading(true);
+      
+      const response = await apiService.deletePatient(deletePatientId);
+      
+      if (response.success) {
+        // Remove the case from the list
+        const updatedCases = ctCases.filter(c => c.id !== deletePatientId);
+        setCtCases(updatedCases);
+        setFilteredCases(updatedCases);
+
+        // Close modal
+        handleCloseModal();
+        
+        alert('Patient deleted successfully!');
+      } else {
+        throw new Error(response.message || 'Failed to delete patient');
+      }
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      alert(`Failed to delete patient: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   return (
     <div className="dashboard-page">
@@ -26,37 +318,381 @@ const DashboardPage: React.FC = () => {
           <h1>Clinical Dashboard</h1>
           <p className="header-subtitle">Real-time multimodal analysis overview</p>
         </div>
+        
+        <div className="header-search">
+          <div className="search-container">
+            <div className="search-input-wrapper">
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search patients, case IDs, or file names..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+              <div className="search-icon">
+                🔍
+              </div>
+              {searchQuery && (
+                <button 
+                  className="search-clear"
+                  onClick={clearSearch}
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="header-actions">
-          <button className="nav-button logout">
-            <span>🚪</span>
-            Logout
+          <button className="logout-button" onClick={handleLogout}>
+            Sign Out
           </button>
         </div>
       </header>
 
       <div className="dashboard-content">
-        <div className="dashboard-card">
-          <div className="card-header">
-            <h2>Saved CT Cases</h2>
+        {error && (
+          <div className="error-message" style={{ 
+            background: '#fef2f2', 
+            border: '1px solid #fecaca', 
+            color: '#dc2626', 
+            padding: '1rem', 
+            borderRadius: '0.5rem', 
+            marginBottom: '1rem' 
+          }}>
+            {error}
           </div>
-          <div className="ct-case-list">
-            {ctCases.map((ct) => (
-              <div key={ct.id} className="ct-case-item">
-                <div className="ct-case-info">
-                  <h4>{ct.patientName}</h4>
-                  <p>{ct.fileName} — {ct.uploadedAt}</p>
+        )}
+        
+        <div className="cases-section">
+          <div className="section-header">
+            <h2>
+              {searchQuery 
+                ? `Search Results (${filteredCases.length})`
+                : `Patient Cases (${filteredCases.length})`
+              }
+            </h2>
+            <div className="section-header-actions">
+              {isLoading && <span className="loading-indicator">Loading...</span>}
+              {searchQuery && !isLoading && (
+                <span className="search-info">
+                  Searching for: "{searchQuery}"
+                </span>
+              )}
+              <button 
+                className="add-patient-button"
+                onClick={handleAddPatient}
+                disabled={isLoading}
+              >
+                + Add Patient
+              </button>
+            </div>
+          </div>
+          
+          <div className="cases-grid">
+            {filteredCases.length === 0 && !isLoading ? (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  {searchQuery ? '🔍' : '📋'}
                 </div>
-                <button 
-                  className="view-all-button"
-                  onClick={() => navigate('/chat', { state: { patient: ct } })}
-                >
-                  View
-                </button>
+                <h3>
+                  {searchQuery ? 'No Results Found' : 'No Recent Cases'}
+                </h3>
+                <p>
+                  {searchQuery 
+                    ? `No cases match "${searchQuery}". Try a different search term.`
+                    : 'No patient cases available at the moment.'
+                  }
+                </p>
+                {searchQuery && (
+                  <button 
+                    className="clear-search-button"
+                    onClick={clearSearch}
+                  >
+                    Clear Search
+                  </button>
+                )}
               </div>
-            ))}
+            ) : (
+              filteredCases.map((ct) => (
+                <div key={ct.id} className="case-card">
+                  <div className="case-header">
+                    <div className="case-id">Case #{ct.id}</div>
+                    <div className="case-date">{new Date(ct.uploadedAt).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}</div>
+                  </div>
+                  
+                  <div className="case-content">
+                    <div className="patient-info">
+                      <h3 className="patient-name">{ct.patientName}</h3>
+                      <div className="case-details">
+                        <div className="detail-item">
+                          <span className="detail-label">Study Type:</span>
+                          <span className="detail-value">CT Scan</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-label">File:</span>
+                          <span className="detail-value">{ct.fileName}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="case-actions">
+                    <div className="action-buttons">
+                      <button 
+                        className="edit-button"
+                        onClick={() => handleEditPatient(ct)}
+                        disabled={isLoading}
+                        title="Edit patient"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="delete-button"
+                        onClick={() => handleDeletePatient(ct.id)}
+                        disabled={isLoading}
+                        title="Delete patient"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    <button 
+                      className="analyze-button"
+                      onClick={() => navigate('/chat', { state: { patient: ct } })}
+                      disabled={isLoading}
+                    >
+                      Analyze Case
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
+
+      {/* Add Patient Modal */}
+      {showAddPatientModal && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add New Patient</h3>
+              <button 
+                className="modal-close-button"
+                onClick={handleCloseModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitPatient} className="add-patient-form">
+              <div className="form-group">
+                <label htmlFor="patientName">Patient Name *</label>
+                <input
+                  type="text"
+                  id="patientName"
+                  name="patientName"
+                  value={newPatient.patientName}
+                  onChange={handlePatientInputChange}
+                  placeholder="Enter patient full name"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="uploadedAt">Date *</label>
+                <input
+                  type="date"
+                  id="uploadedAt"
+                  name="uploadedAt"
+                  value={newPatient.uploadedAt}
+                  onChange={handlePatientInputChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="file">CT Scan File *</label>
+                <div className="file-input-wrapper">
+                  <input
+                    type="file"
+                    id="file"
+                    onChange={handleFileSelect}
+                    accept=".dcm,.jpg,.jpeg,.png,.pdf"
+                    style={{ display: 'none' }}
+                  />
+                  <button 
+                    type="button"
+                    className="file-select-button"
+                    onClick={() => document.getElementById('file')?.click()}
+                  >
+                    {selectedFile ? selectedFile.name : 'Select File'}
+                  </button>
+                  <p className="file-hint">
+                    Supported formats: DICOM (.dcm), Images, PDF
+                  </p>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="cancel-button"
+                  onClick={handleCloseModal}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="submit-button"
+                  disabled={!newPatient.patientName.trim() || !selectedFile}
+                >
+                  Add Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Patient Modal */}
+      {showEditPatientModal && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Edit Patient</h3>
+              <button 
+                className="modal-close-button"
+                onClick={handleCloseModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdatePatient} className="add-patient-form">
+              <div className="form-group">
+                <label htmlFor="editPatientName">Patient Name *</label>
+                <input
+                  type="text"
+                  id="editPatientName"
+                  name="patientName"
+                  value={editPatient.patientName}
+                  onChange={handleEditInputChange}
+                  placeholder="Enter patient full name"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editUploadedAt">Date *</label>
+                <input
+                  type="date"
+                  id="editUploadedAt"
+                  name="uploadedAt"
+                  value={editPatient.uploadedAt}
+                  onChange={handleEditInputChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editFile">CT Scan File (Optional - leave empty to keep current file)</label>
+                <div className="file-input-wrapper">
+                  <input
+                    type="file"
+                    id="editFile"
+                    onChange={handleFileSelect}
+                    accept=".dcm,.jpg,.jpeg,.png,.pdf"
+                    style={{ display: 'none' }}
+                  />
+                  <button 
+                    type="button"
+                    className="file-select-button"
+                    onClick={() => document.getElementById('editFile')?.click()}
+                  >
+                    {selectedFile ? selectedFile.name : 'Change File (Optional)'}
+                  </button>
+                  <p className="file-hint">
+                    Current file: {editPatient.fileName}
+                  </p>
+                  <p className="file-hint">
+                    Supported formats: DICOM (.dcm), Images, PDF
+                  </p>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="cancel-button"
+                  onClick={handleCloseModal}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="submit-button"
+                  disabled={!editPatient.patientName.trim()}
+                >
+                  Update Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content delete-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Delete Patient</h3>
+              <button 
+                className="modal-close-button"
+                onClick={handleCloseModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="delete-confirmation">
+              <div className="warning-icon">⚠️</div>
+              <p>Are you sure you want to delete this patient?</p>
+              <p className="warning-text">
+                This action cannot be undone. All patient data and files will be permanently removed.
+              </p>
+
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="cancel-button"
+                  onClick={handleCloseModal}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="button" 
+                  className="delete-confirm-button"
+                  onClick={handleConfirmDelete}
+                  disabled={isLoading}
+                >
+                  Delete Patient
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

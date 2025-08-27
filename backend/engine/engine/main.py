@@ -28,3 +28,7 @@ app.include_router(api_router, prefix="/api")
 def read_root():
     return {"message": "Backend Engine is running!"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "backend-engine"}
+

@@ -1,21 +1,21 @@
-/* Chat Page Styles */
+/* Chat Page Styles - Blue Theme to match Login/Dashboard */
 .chat-page {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #1a202c;
+  background: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 /* Header Styles */
 .chat-header {
-  background: #2d3748;
-  border-bottom: 1px solid #4a5568;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
 .header-left {
@@ -26,7 +26,7 @@
 
 .chat-header h1 {
   font-size: 1.5rem;
-  color: #e2e8f0;
+  color: white;
   margin: 0;
   font-weight: 600;
 }
@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #cbd5e1;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 0.875rem;
 }
 
@@ -68,19 +68,23 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: #4a5568;
-  border: 1px solid #718096;
+  padding: 0.625rem 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  color: #e2e8f0;
+  color: white;
   font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(10px);
 }
 
 .header-button:hover {
-  background: #718096;
-  border-color: #a0aec0;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Main Container */
@@ -93,11 +97,12 @@
 /* Upload Sidebar */
 .upload-sidebar {
   width: 280px;
-  background: #1a202c;
-  color: white;
+  background: white;
+  color: #1e293b;
   padding: 1.5rem;
   overflow-y: auto;
-  border-right: 1px solid #2d3748;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.05);
 }
 
 
@@ -106,7 +111,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #1a202c;
+  background: #f8fafc;
 }
 
 .messages-container {
@@ -179,10 +184,11 @@
 }
 
 .message.assistant .message-content {
-  background: #2d3748;
-  color: #e2e8f0;
-  border: 1px solid #4a5568;
+  background: white;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
   border-bottom-left-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 /* Attachments */
@@ -217,8 +223,8 @@
 }
 
 .analysis-card {
-  background: #2d3748;
-  border: 1px solid #4a5568;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 1rem;
   margin-top: 0.5rem;
@@ -226,14 +232,14 @@
 
 .analysis-card h4 {
   margin: 0 0 0.75rem;
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 0.875rem;
   font-weight: 600;
 }
 
 .analysis-content {
   font-size: 0.875rem;
-  color: #cbd5e1;
+  color: #64748b;
 }
 
 .confidence-bar {
