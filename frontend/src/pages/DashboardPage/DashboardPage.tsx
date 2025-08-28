@@ -391,89 +391,101 @@ const DashboardPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="cases-grid">
-            {filteredCases.length === 0 && !isLoading ? (
-              <div className="empty-state">
-                <div className="empty-icon">
-                  {searchQuery ? '🔍' : '📋'}
-                </div>
-                <h3>
-                  {searchQuery ? 'No Results Found' : 'No Recent Cases'}
-                </h3>
-                <p>
-                  {searchQuery 
-                    ? `No cases match "${searchQuery}". Try a different search term.`
-                    : 'No patient cases available at the moment.'
-                  }
-                </p>
-                {searchQuery && (
-                  <button 
-                    className="clear-search-button"
-                    onClick={clearSearch}
-                  >
-                    Clear Search
-                  </button>
-                )}
+          {filteredCases.length === 0 && !isLoading ? (
+            <div className="empty-state">
+              <div className="empty-icon">
+                {searchQuery ? '🔍' : '📋'}
               </div>
-            ) : (
-              filteredCases.map((ct) => (
-                <div key={ct.id} className="case-card">
-                  <div className="case-header">
-                    <div className="case-id">Case #{ct.id}</div>
-                    <div className="case-date">{new Date(ct.uploadedAt).toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })}</div>
-                  </div>
-                  
-                  <div className="case-content">
-                    <div className="patient-info">
-                      <h3 className="patient-name">{ct.patientName}</h3>
-                      <div className="case-details">
-                        <div className="detail-item">
-                          <span className="detail-label">Study Type:</span>
-                          <span className="detail-value">CT Scan</span>
+              <h3>
+                {searchQuery ? 'No Results Found' : 'No Recent Cases'}
+              </h3>
+              <p>
+                {searchQuery 
+                  ? `No cases match "${searchQuery}". Try a different search term.`
+                  : 'No patient cases available at the moment.'
+                }
+              </p>
+              {searchQuery && (
+                <button 
+                  className="clear-search-button"
+                  onClick={clearSearch}
+                >
+                  Clear Search
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="patients-table-container">
+              <table className="patients-table">
+                <thead>
+                  <tr>
+                    <th>Case ID</th>
+                    <th>Patient Name</th>
+                    <th>Study Type</th>
+                    <th>File Name</th>
+                    <th>Upload Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCases.map((ct) => (
+                    <tr key={ct.id} className="patient-row">
+                      <td>
+                        <div className="case-id-cell">#{ct.id}</div>
+                      </td>
+                      <td>
+                        <div className="patient-name-cell">{ct.patientName}</div>
+                      </td>
+                      <td>
+                        <div className="study-type-cell">CT Scan</div>
+                      </td>
+                      <td>
+                        <div className="file-name-cell" title={ct.fileName}>
+                          {ct.fileName}
                         </div>
-                        <div className="detail-item">
-                          <span className="detail-label">File:</span>
-                          <span className="detail-value">{ct.fileName}</span>
+                      </td>
+                      <td>
+                        <div className="date-cell">
+                          {new Date(ct.uploadedAt).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="case-actions">
-                    <div className="action-buttons">
-                      <button 
-                        className="edit-button"
-                        onClick={() => handleEditPatient(ct)}
-                        disabled={isLoading}
-                        title="Edit patient"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="delete-button"
-                        onClick={() => handleDeletePatient(ct.id)}
-                        disabled={isLoading}
-                        title="Delete patient"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <button 
-                      className="analyze-button"
-                      onClick={() => navigate('/chat', { state: { patient: ct } })}
-                      disabled={isLoading}
-                    >
-                      Analyze Case
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                      </td>
+                      <td>
+                        <div className="actions-cell">
+                          <button 
+                            className="table-edit-button"
+                            onClick={() => handleEditPatient(ct)}
+                            disabled={isLoading}
+                            title="Edit patient"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="table-delete-button"
+                            onClick={() => handleDeletePatient(ct.id)}
+                            disabled={isLoading}
+                            title="Delete patient"
+                          >
+                            Delete
+                          </button>
+                          <button 
+                            className="table-analyze-button"
+                            onClick={() => navigate('/chat', { state: { patient: ct } })}
+                            disabled={isLoading}
+                          >
+                            Analyze
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 // API service layer for MendAI frontend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // Types matching backend models
 export interface LoginRequest {
@@ -283,7 +283,9 @@ class ApiService {
 
   // Health check
   async healthCheck(): Promise<{ status: string }> {
-    return await this.makeRequest<{ status: string }>('/health');
+    const url = `${this.baseURL}/health`;
+    const response = await fetch(url);
+    return await response.json();
   }
 }
 

@@ -26,12 +26,8 @@ const ChatPage: React.FC = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [sessionId, setSessionId] = useState<string>('');
-
-  const ctImages = [
-    '/CT_head_John1.jpg',
-    '/CT_head_John2.jpg',
-    '/CT_head_John3.jpg',
-  ];
+  const [ctImages, setCtImages] = useState<string[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   // Check authentication status
   useEffect(() => {
@@ -41,6 +37,58 @@ const ChatPage: React.FC = () => {
       return;
     }
   }, [navigate]);
+
+  // Load CT images for the selected patient
+  useEffect(() => {
+    const loadPatientImages = async () => {
+      if (!patient) {
+        setCtImages([]);
+        return;
+      }
+
+      try {
+        setLoadingImages(true);
+        
+        // Call backend API to get patient's CT images
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.images && data.images.length > 0) {
+            setCtImages(data.images);
+          } else {
+            // Fallback to placeholder images if no images available
+            setCtImages([
+              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f3f4f6"/><circle cx="150" cy="150" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="150" y="155" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">CT Scan</text><text x="150" y="175" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">No Images Available</text></svg>'
+            ]);
+          }
+        } else {
+          // Backend doesn't have the endpoint yet, use placeholder
+          setCtImages([
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f3f4f6"/><circle cx="150" cy="150" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="150" y="155" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">CT Scan 1</text><text x="150" y="175" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">Head Axial</text></svg>',
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f3f4f6"/><circle cx="150" cy="150" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="150" y="155" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">CT Scan 2</text><text x="150" y="175" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">Head Sagittal</text></svg>',
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f3f4f6"/><circle cx="150" cy="150" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="150" y="155" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">CT Scan 3</text><text x="150" y="175" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">Head Coronal</text></svg>'
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading patient images:', error);
+        // Fallback to placeholder images on error
+        setCtImages([
+          'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f3f4f6"/><circle cx="150" cy="150" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="150" y="155" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">CT Scan</text><text x="150" y="175" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">Loading Failed</text></svg>'
+        ]);
+      } finally {
+        setLoadingImages(false);
+      }
+    };
+
+    loadPatientImages();
+  }, [patient]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -147,39 +195,39 @@ const ChatPage: React.FC = () => {
               <p><strong>CT File:</strong> {patient.fileName || patient.file_name}</p>
               <p><strong>Date:</strong> {patient.uploadedAt || patient.uploaded_at}</p>
 
-              <div className="ct-images-section" style={{ marginTop: '1rem' }}>
+              <div className="ct-images-section">
                 <h4>CT Scan Images</h4>
-                <div className="ct-preview">
-                  <img
-                    src={ctImages[currentImageIndex]}
-                    alt={`CT Scan ${currentImageIndex + 1}`}
-                    style={{ width: '100%', borderRadius: '8px', cursor: 'pointer' }}
-                    onClick={() => setPreviewModalOpen(true)}
-                  />
-                  <div className="image-navigation" style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    marginTop: '0.5rem',
-                    gap: '1rem'
-                  }}>
-                    <button 
-                      onClick={(e) => handlePrevImage(e)}
-                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
-                    >
-                      ◀
-                    </button>
-                    <span style={{ fontSize: '0.9rem', color: '#666' }}>
-                      {currentImageIndex + 1} of {ctImages.length}
-                    </span>
-                    <button 
-                      onClick={(e) => handleNextImage(e)}
-                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
-                    >
-                      ▶
-                    </button>
+                {loadingImages ? (
+                  <div className="loading-images">
+                    <div className="loading-placeholder">
+                      <div className="loading-spinner"></div>
+                      <p>Loading CT images...</p>
+                    </div>
                   </div>
-                </div>
+                ) : ctImages.length > 0 ? (
+                  <div className="ct-preview">
+                    <img
+                      src={ctImages[currentImageIndex]}
+                      alt={`CT Scan ${currentImageIndex + 1}`}
+                      onClick={() => setPreviewModalOpen(true)}
+                    />
+                    <div className="image-navigation">
+                      <button onClick={(e) => handlePrevImage(e)}>
+                        ◀
+                      </button>
+                      <span className="image-counter">
+                        {currentImageIndex + 1} of {ctImages.length}
+                      </span>
+                      <button onClick={(e) => handleNextImage(e)}>
+                        ▶
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="no-images">
+                    <p>No CT scan images available for this patient.</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

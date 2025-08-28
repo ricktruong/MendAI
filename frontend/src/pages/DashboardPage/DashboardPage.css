@@ -209,37 +209,62 @@
   transform: none;
 }
 
-.cases-grid {
-  padding: 2rem;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 1.5rem;
-}
-
-.case-card {
+/* Patients Table Styles */
+.patients-table-container {
   background: white;
-  border: 1px solid #e2e8f0;
   border-radius: 12px;
   overflow: hidden;
-  transition: all 0.3s ease;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
 }
 
-.case-card:hover {
-  background: white;
-  border-color: #3b82f6;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.15);
+.patients-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
 }
 
-.case-header {
-  padding: 1rem 1.5rem 0.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+.patients-table thead {
+  background: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
 }
 
-.case-id {
+.patients-table th {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.875rem;
+  letter-spacing: 0.025em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.patients-table th:last-child {
+  text-align: center;
+  width: 200px;
+}
+
+.patients-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.patients-table tbody tr:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+.patients-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.patients-table td {
+  padding: 1rem 1.5rem;
+  vertical-align: middle;
+}
+
+/* Table Cell Styles */
+.case-id-cell {
   background: #3b82f6;
   color: white;
   padding: 0.25rem 0.75rem;
@@ -248,128 +273,106 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  display: inline-block;
 }
 
-.case-date {
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.case-content {
-  padding: 0.5rem 1.5rem 1rem;
-}
-
-.patient-name {
-  margin: 0 0 1rem;
-  color: #1e293b;
-  font-size: 1.25rem;
+.patient-name-cell {
   font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-.case-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.detail-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.detail-label {
-  color: #64748b;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.detail-value {
   color: #1e293b;
-  font-size: 0.875rem;
+  font-size: 1rem;
+}
+
+.study-type-cell {
+  color: #059669;
   font-weight: 500;
-  text-align: right;
-  max-width: 60%;
-  text-overflow: ellipsis;
+  background: #ecfdf5;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  display: inline-block;
+  font-size: 0.75rem;
+}
+
+.file-name-cell {
+  color: #64748b;
+  max-width: 200px;
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.case-actions {
-  padding: 1rem 1.5rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+.date-cell {
+  color: #64748b;
+  font-weight: 500;
 }
 
-.action-buttons {
+/* Actions Cell */
+.actions-cell {
   display: flex;
   gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
 }
 
-.edit-button {
-  flex: 1;
+.table-edit-button {
   background: #3b82f6;
   color: white;
-  border: 1px solid #2563eb;
-  padding: 0.5rem 1rem;
+  border: none;
+  padding: 0.375rem 0.75rem;
   border-radius: 4px;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
-.edit-button:hover:not(:disabled) {
+.table-edit-button:hover:not(:disabled) {
   background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
-.delete-button {
-  flex: 1;
+.table-delete-button {
   background: #ef4444;
   color: white;
-  border: 1px solid #dc2626;
-  padding: 0.5rem 1rem;
+  border: none;
+  padding: 0.375rem 0.75rem;
   border-radius: 4px;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
-.delete-button:hover:not(:disabled) {
+.table-delete-button:hover:not(:disabled) {
   background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
-.edit-button:disabled,
-.delete-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.analyze-button {
-  width: 100%;
-  background: #059669;
+.table-analyze-button {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: white;
-  border: 1px solid #047857;
-  padding: 0.75rem 1.5rem;
+  border: none;
+  padding: 0.375rem 1rem;
   border-radius: 4px;
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
-.analyze-button:hover:not(:disabled) {
-  background: #047857;
+.table-analyze-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
 }
 
-.analyze-button:disabled {
+.table-edit-button:disabled,
+.table-delete-button:disabled,
+.table-analyze-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Empty State */
@@ -377,7 +380,10 @@
   text-align: center;
   padding: 4rem 2rem;
   color: #a0aec0;
-  grid-column: 1 / -1;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
 .empty-icon {
@@ -471,14 +477,36 @@
     padding: 1rem;
   }
   
-  .cases-grid {
-    grid-template-columns: 1fr;
-    padding: 1rem;
-    gap: 1rem;
+  .patients-table-container {
+    margin: 0 -1rem;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
   
-  .case-card {
-    max-width: none;
+  .patients-table {
+    font-size: 0.75rem;
+  }
+  
+  .patients-table th,
+  .patients-table td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .patients-table th:last-child {
+    width: 160px;
+  }
+  
+  .actions-cell {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .table-edit-button,
+  .table-delete-button,
+  .table-analyze-button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.65rem;
   }
   
   .section-header {
