@@ -231,3 +231,51 @@ async def delete_patient(case_id: str) -> DeletePatientResponse:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete patient: {str(e)}")
+
+# Patient Images endpoint
+class PatientImagesResponse(BaseModel):
+    success: bool
+    images: List[str]
+    message: str
+
+@router.get("/patients/{case_id}/images", response_model=PatientImagesResponse)
+async def get_patient_images(case_id: str) -> PatientImagesResponse:
+    """
+    Get CT scan images for a specific patient
+    
+    Args:
+        case_id: ID of the patient case
+    
+    Returns:
+        PatientImagesResponse: List of image URLs
+    """
+    try:
+        # Find the case
+        case_found = False
+        for case in stored_cases:
+            if case.id == case_id:
+                case_found = True
+                break
+        
+        if not case_found:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        
+        # In a real system, these would be fetched from a medical imaging server (PACS)
+        # or from file storage based on the patient's actual uploaded DICOM files
+        # For now, return placeholder image URLs that the frontend can display
+        sample_images = [
+            f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23f3f4f6'/><circle cx='200' cy='200' r='120' fill='%23d1d5db' stroke='%236b7280' stroke-width='3'/><text x='200' y='190' font-family='Arial' font-size='16' fill='%23374151' text-anchor='middle'>Patient: {case_id}</text><text x='200' y='210' font-family='Arial' font-size='14' fill='%236b7280' text-anchor='middle'>CT Scan - Axial View</text><text x='200' y='230' font-family='Arial' font-size='12' fill='%239ca3af' text-anchor='middle'>Slice 1 of 3</text></svg>",
+            f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23f3f4f6'/><ellipse cx='200' cy='200' rx='80' ry='120' fill='%23d1d5db' stroke='%236b7280' stroke-width='3'/><text x='200' y='190' font-family='Arial' font-size='16' fill='%23374151' text-anchor='middle'>Patient: {case_id}</text><text x='200' y='210' font-family='Arial' font-size='14' fill='%236b7280' text-anchor='middle'>CT Scan - Sagittal View</text><text x='200' y='230' font-family='Arial' font-size='12' fill='%239ca3af' text-anchor='middle'>Slice 2 of 3</text></svg>",
+            f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23f3f4f6'/><ellipse cx='200' cy='200' rx='120' ry='80' fill='%23d1d5db' stroke='%236b7280' stroke-width='3'/><text x='200' y='190' font-family='Arial' font-size='16' fill='%23374151' text-anchor='middle'>Patient: {case_id}</text><text x='200' y='210' font-family='Arial' font-size='14' fill='%236b7280' text-anchor='middle'>CT Scan - Coronal View</text><text x='200' y='230' font-family='Arial' font-size='12' fill='%239ca3af' text-anchor='middle'>Slice 3 of 3</text></svg>"
+        ]
+        
+        return PatientImagesResponse(
+            success=True,
+            images=sample_images,
+            message=f"Retrieved {len(sample_images)} images for patient {case_id}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve patient images: {str(e)}")
