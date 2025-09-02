@@ -34,6 +34,7 @@ const PatientListPage: React.FC = () => {
   });
   const [deletePatientId, setDeletePatientId] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deleteFile, setDeleteFile] = useState(false);
 
   // Check authentication and load dashboard data
   useEffect(() => {
@@ -122,6 +123,7 @@ const PatientListPage: React.FC = () => {
     });
     setDeletePatientId('');
     setSelectedFile(null);
+    setDeleteFile(false);
   };
 
   const handlePatientInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,11 +138,17 @@ const PatientListPage: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
+      setDeleteFile(false); // Reset delete file flag when new file is selected
       setNewPatient(prev => ({
         ...prev,
         fileName: file.name
       }));
     }
+  };
+
+  const handleDeleteFile = () => {
+    setDeleteFile(true);
+    setSelectedFile(null);
   };
 
   const handleSubmitPatient = async (e: React.FormEvent) => {
@@ -205,6 +213,8 @@ const PatientListPage: React.FC = () => {
       fileName: patient.fileName,
       uploadedAt: patient.uploadedAt
     });
+    setDeleteFile(false);
+    setSelectedFile(null);
     setShowEditPatientModal(true);
   };
 
@@ -232,7 +242,10 @@ const PatientListPage: React.FC = () => {
       formData.append('patient_name', editPatient.patientName);
       formData.append('uploaded_at', editPatient.uploadedAt);
       
-      if (selectedFile) {
+      if (deleteFile) {
+        // Indicate to backend that file should be deleted
+        formData.append('delete_file', 'true');
+      } else if (selectedFile) {
         formData.append('file', selectedFile);
       }
 
@@ -246,7 +259,7 @@ const PatientListPage: React.FC = () => {
             ? {
                 id: response.case.id,
                 patientName: response.case.patient_name,
-                fileName: response.case.file_name,
+                fileName: deleteFile ? '' : response.case.file_name, // Clear filename if deleted
                 uploadedAt: response.case.uploaded_at
               }
             : c
@@ -441,7 +454,11 @@ const PatientListPage: React.FC = () => {
                       </td>
                       <td>
                         <div className="file-name-cell" title={ct.fileName}>
-                          {ct.fileName}
+                          {ct.fileName ? ct.fileName : (
+                            <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>
+                              No file attached
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -616,28 +633,125 @@ const PatientListPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="editFile">CT Scan File (Optional - leave empty to keep current file)</label>
+                <label htmlFor="editFile">Patient Files</label>
                 <div className="file-input-wrapper">
-                  <input
-                    type="file"
-                    id="editFile"
-                    onChange={handleFileSelect}
-                    accept=".dcm,.jpg,.jpeg,.png,.pdf"
-                    style={{ display: 'none' }}
-                  />
-                  <button 
-                    type="button"
-                    className="file-select-button"
-                    onClick={() => document.getElementById('editFile')?.click()}
-                  >
-                    {selectedFile ? selectedFile.name : 'Change File (Optional)'}
-                  </button>
-                  <p className="file-hint">
-                    Current file: {editPatient.fileName}
-                  </p>
-                  <p className="file-hint">
-                    Supported formats: DICOM (.dcm), Images, PDF
-                  </p>
+                  {/* Show existing file */}
+                  {editPatient.fileName && !deleteFile && (
+                    <div className="existing-file" style={{ 
+                      padding: '10px', 
+                      backgroundColor: '#f3f4f6', 
+                      borderRadius: '4px', 
+                      marginBottom: '10px',
+                      border: '1px solid #d1d5db'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <strong> {editPatient.fileName}</strong>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                            Currently attached file
+                          </p>
+                        </div>
+                        <button 
+                          type="button"
+                          className="file-delete-button"
+                          onClick={handleDeleteFile}
+                          style={{ 
+                            backgroundColor: '#dc2626', 
+                            color: 'white', 
+                            padding: '6px 12px',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                           Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show file marked for deletion */}
+                  {editPatient.fileName && deleteFile && (
+                    <div className="deleted-file" style={{ 
+                      padding: '10px', 
+                      backgroundColor: '#fef2f2', 
+                      borderRadius: '4px', 
+                      marginBottom: '10px',
+                      border: '1px solid #fecaca'
+                    }}>
+                      <div style={{ color: '#dc2626' }}>
+                        <strong> {editPatient.fileName}</strong>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem' }}>
+                          This file will be deleted when you save changes
+                        </p>
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setDeleteFile(false)}
+                        style={{ 
+                          backgroundColor: '#6b7280', 
+                          color: 'white', 
+                          padding: '4px 8px',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          marginTop: '6px'
+                        }}
+                      >
+                        Cancel Delete
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Show no file message */}
+                  {!editPatient.fileName && (
+                    <div className="no-file" style={{ 
+                      padding: '10px', 
+                      backgroundColor: '#fefce8', 
+                      borderRadius: '4px', 
+                      marginBottom: '10px',
+                      border: '1px solid #fde047'
+                    }}>
+                      <p style={{ margin: 0, color: '#a16207', fontSize: '0.875rem' }}>
+                        📝 No file currently attached to this patient
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Upload new file section */}
+                  <div className="upload-section" style={{ marginTop: '15px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.875rem', fontWeight: 'bold' }}>
+                      Upload New File (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      id="editFile"
+                      onChange={handleFileSelect}
+                      accept=".dcm,.jpg,.jpeg,.png,.pdf"
+                      style={{ display: 'none' }}
+                    />
+                    <button 
+                      type="button"
+                      className="file-select-button"
+                      onClick={() => document.getElementById('editFile')?.click()}
+                      disabled={deleteFile}
+                      style={{ 
+                        backgroundColor: '#3b82f6', 
+                        color: 'white', 
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {selectedFile ? `📎 ${selectedFile.name}` : ' Choose New File'}
+                    </button>
+                    <p className="file-hint" style={{ margin: '8px 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                      Supported formats: DICOM (.dcm), Images, PDF
+                    </p>
+                  </div>
                 </div>
               </div>
 

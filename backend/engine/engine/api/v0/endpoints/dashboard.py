@@ -149,7 +149,8 @@ async def update_patient(
     case_id: str,
     patient_name: str = Form(...),
     uploaded_at: str = Form(...),
-    file: Optional[UploadFile] = File(None)
+    file: Optional[UploadFile] = File(None),
+    delete_file: Optional[str] = Form(None)
 ) -> UpdatePatientResponse:
     """
     Update an existing patient
@@ -159,6 +160,7 @@ async def update_patient(
         patient_name: New patient name
         uploaded_at: New date
         file: Optional new file upload
+        delete_file: Optional flag to delete the file (set to 'true' to delete)
     
     Returns:
         UpdatePatientResponse: Success response with updated case data
@@ -183,8 +185,13 @@ async def update_patient(
         updated_case.patient_name = patient_name
         updated_case.uploaded_at = uploaded_at
         
-        # If new file provided, update filename
-        if file and file.filename:
+        # Handle file operations
+        if delete_file and delete_file.lower() == 'true':
+            # Delete the file
+            # TODO: In production, delete file from storage
+            updated_case.file_name = ""  # Clear filename
+        elif file and file.filename:
+            # If new file provided, update filename
             # TODO: In production, handle file upload to storage
             updated_case.file_name = file.filename
         
