@@ -62,7 +62,7 @@ export interface Patient {
   gender?: string;
 }
 
-export interface DashboardData {
+export interface PatientListData {
   patients: Patient[];
   recent_cases: Array<{
     id: string;
@@ -71,6 +71,9 @@ export interface DashboardData {
     uploaded_at: string;
   }>;
 }
+
+// Keep old name for backward compatibility
+export interface DashboardData extends PatientListData {}
 
 // API client class
 class ApiService {
@@ -161,12 +164,12 @@ class ApiService {
     });
   }
 
-  // Dashboard endpoints
-  async getDashboardData(): Promise<DashboardData> {
+  // Patient List endpoints (formerly Dashboard endpoints)
+  async getPatientListData(): Promise<PatientListData> {
     try {
-      return await this.makeRequest<DashboardData>('/dashboard');
+      return await this.makeRequest<PatientListData>('/dashboard');
     } catch (error) {
-      // Return mock data for now since dashboard endpoint isn't fully implemented
+      // Return mock data for now since endpoint isn't fully implemented
       return {
         patients: [
           { id: '1', name: 'John Doe', age: 54, gender: 'Male' },

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './PatientListPage.css';
 import { apiService } from '../../services/api';
-import type { DashboardData } from '../../services/api';
+import type { PatientListData } from '../../services/api';
 
 interface CtCase {
   id: string;
@@ -44,13 +44,13 @@ const PatientListPage: React.FC = () => {
       return;
     }
 
-    loadDashboardData();
+    loadPatientListData();
   }, [navigate]);
 
-  const loadDashboardData = async () => {
+  const loadPatientListData = async () => {
     try {
       setIsLoading(true);
-      const data: DashboardData = await apiService.getDashboardData();
+      const data: PatientListData = await apiService.getPatientListData();
       
       // Map the backend data to frontend format
       const cases: CtCase[] = data.recent_cases.map(caseData => ({
@@ -63,8 +63,8 @@ const PatientListPage: React.FC = () => {
       setCtCases(cases);
       setFilteredCases(cases);
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
+      console.error('Error loading patient list data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load patient list data');
       
       // Fallback to mock data
       const fallbackCases = [

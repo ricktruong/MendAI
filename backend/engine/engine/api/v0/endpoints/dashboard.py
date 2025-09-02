@@ -18,9 +18,13 @@ class RecentCase(BaseModel):
     file_name: str
     uploaded_at: str
 
-class DashboardResponse(BaseModel):
+class PatientListResponse(BaseModel):
     patients: List[Patient]
     recent_cases: List[RecentCase]
+
+# Keep old name for backward compatibility
+class DashboardResponse(PatientListResponse):
+    pass
 
 class CreatePatientRequest(BaseModel):
     patient_name: str
@@ -66,14 +70,14 @@ stored_cases = [
     ),
 ]
 
-# 2. Dashboard Page
+# 2. Patient List Page (formerly Dashboard Page)
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard_data() -> DashboardResponse:
+async def get_patient_list_data() -> DashboardResponse:
     """
-    Get dashboard data including patients and recent cases
+    Get patient list data including patients and recent cases for Patient List Page
     
     Returns:
-        DashboardResponse: Dashboard data with patients and recent cases
+        DashboardResponse: Patient list data with patients and recent cases
     """
     try:
         # TODO: Implement actual data retrieval from database

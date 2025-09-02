@@ -8,12 +8,12 @@ import uuid
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# 3. Chat Page
+# 3. Patient Dashboard Page (formerly Chat Page)
 # I.User Message Request
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
     """
-    Chat with the LLM
+    Chat with the LLM for Patient Dashboard Page
     """
     try:
         logger.info(f"Received chat request with {len(request.messages)} messages")
