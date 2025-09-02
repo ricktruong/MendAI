@@ -325,8 +325,8 @@ const PatientListPage: React.FC = () => {
   };
 
   return (
-    <div className="dashboard-page">
-      <header className="dashboard-header">
+    <div className="patient-list-page">
+      <header className="patient-list-header">
         <div className="header-content">
           <h1>Patient List</h1>
           <p className="header-subtitle">Manage and view all patient cases</p>
@@ -365,7 +365,7 @@ const PatientListPage: React.FC = () => {
         </div>
       </header>
 
-      <div className="dashboard-content">
+      <div className="patient-list-content">
         {error && (
           <div className="error-message" style={{ 
             background: '#fef2f2', 

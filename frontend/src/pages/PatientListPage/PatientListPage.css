@@ -1,11 +1,11 @@
 /* Blue Theme Dashboard Styles to match Login Page */
-.dashboard-page {
+.patient-list-page {
   min-height: 100vh;
   background: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-.dashboard-header {
+.patient-list-header {
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1.5rem 2rem;
@@ -133,7 +133,7 @@
   transform: translateY(0);
 }
 
-.dashboard-content {
+.patient-list-content {
   padding: 2rem;
 }
 
@@ -449,7 +449,7 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .dashboard-header {
+  .patient-list-header {
     padding: 1rem;
     flex-direction: column;
     gap: 1rem;
@@ -473,7 +473,7 @@
     order: 1;
   }
   
-  .dashboard-content {
+  .patient-list-content {
     padding: 1rem;
   }
   
@@ -519,7 +519,7 @@
 }
 
 @media (max-width: 480px) {
-  .dashboard-header {
+  .patient-list-header {
     padding: 0.75rem;
   }
   
