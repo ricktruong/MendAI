@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './DashboardPage.css';
+import './PatientListPage.css';
 import { apiService } from '../../services/api';
 import type { DashboardData } from '../../services/api';
 
@@ -11,7 +11,7 @@ interface CtCase {
   uploadedAt: string;
 }
 
-const DashboardPage: React.FC = () => {
+const PatientListPage: React.FC = () => {
   const navigate = useNavigate();
   const [ctCases, setCtCases] = useState<CtCase[]>([]);
   const [filteredCases, setFilteredCases] = useState<CtCase[]>([]);
@@ -315,8 +315,8 @@ const DashboardPage: React.FC = () => {
     <div className="dashboard-page">
       <header className="dashboard-header">
         <div className="header-content">
-          <h1>Clinical Dashboard</h1>
-          <p className="header-subtitle">Real-time multimodal analysis overview</p>
+          <h1>Patient List</h1>
+          <p className="header-subtitle">Manage and view all patient cases</p>
         </div>
         
         <div className="header-search">
@@ -473,7 +473,7 @@ const DashboardPage: React.FC = () => {
                           </button>
                           <button 
                             className="table-analyze-button"
-                            onClick={() => navigate('/chat', { state: { patient: ct } })}
+                            onClick={() => navigate('/dashboard', { state: { patient: ct } })}
                             disabled={isLoading}
                           >
                             Analyze
@@ -709,4 +709,4 @@ const DashboardPage: React.FC = () => {
   );
 };
 
-export default DashboardPage;
+export default PatientListPage;

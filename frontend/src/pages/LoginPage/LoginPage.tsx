@@ -25,8 +25,8 @@ const LoginPage: React.FC = () => {
           localStorage.setItem('user', JSON.stringify(result.user));
         }
         
-        console.log('Login successful, navigating to dashboard');
-        navigate('/dashboard');
+        console.log('Login successful, navigating to patient list');
+        navigate('/patients');
       } else {
         setError(result.error || 'Login failed - invalid credentials');
       }

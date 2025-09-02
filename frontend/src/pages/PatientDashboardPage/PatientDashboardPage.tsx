@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import './ChatPage.css';
+import './PatientDashboardPage.css';
 import { apiService } from '../../services/api';
 import type { Message } from '../../services/api';
 
-const ChatPage: React.FC = () => {
+const PatientDashboardPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const patient = location.state?.patient;
@@ -167,7 +167,7 @@ const ChatPage: React.FC = () => {
     <div className="chat-page">
       <div className="chat-header">
         <div className="header-left">
-          <h1>MendAI Clinical Assistant</h1>
+          <h1>Patient Dashboard</h1>
           <span className="status-indicator">
             <span className="status-dot"></span>
             Connected to EHR
@@ -177,8 +177,8 @@ const ChatPage: React.FC = () => {
           <button className="header-button" onClick={() => setShowPatientPanel(!showPatientPanel)}>
             Patient Info
           </button>
-          <button className="header-button" onClick={() => navigate('/dashboard')}>
-            Dashboard
+          <button className="header-button" onClick={() => navigate('/patients')}>
+            Patient List
           </button>
         </div>
       </div>
@@ -342,4 +342,4 @@ const ChatPage: React.FC = () => {
   );
 };
 
-export default ChatPage;
+export default PatientDashboardPage;
