@@ -249,7 +249,7 @@ def main():
         print(f"{'='*60}")
         
         # Run full analysis (ClinicalBERT + BioGPT)
-        results = biogpt.run_full_analysis(patient)
+        # results = biogpt.run_full_analysis(patient)
         
         print(f"\n--- Summary for Patient {i} ---")
         print(f"Name: {patient['name']}")
@@ -258,8 +258,9 @@ def main():
         print(f"Key Finding: {patient['imaging']}")
         
         # You can also run just the diagnosis without ClinicalBERT
-        # diagnosis = biogpt.generate_diagnosis(patient, max_tokens=200)
-        # print(f"Diagnosis: {diagnosis}")
+        diagnosis = biogpt.generate_diagnosis(patient, max_tokens=200)
+        print("\n=== BioGPT Response ===")
+        print(diagnosis)
 
 def quick_inference_example():
     """
@@ -290,7 +291,7 @@ def quick_inference_example():
 
 if __name__ == "__main__":
     # Run the main example with multiple patient cases
-    # main()
+    main()
     
     # Uncomment to run quick inference example
-    quick_inference_example()
+    # quick_inference_example()
