@@ -7,13 +7,21 @@ readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.8"
 fastapi = "^0.116.0"
-uvicorn = "^0.35.0"
-python-dotenv = "^1.1.1"
 pydantic = "^2.0.0"
 structlog = "^24.1.0"
+python-dotenv = "<1.1.0"
+uvicorn = "<0.24.0"
 common = {path = "../common"}
+
+# PyTorch for Jetson AGX Orin (ARM64) with CUDA support
+torch = {url = "https://developer.download.nvidia.com/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl"}
+monai = "<1.0.0"
+transformers = ">=4.20.0,<4.30.0"
+sacremoses = "^0.1.1"
+
+
 
 [build-system]
 requires = ["poetry-core"]
