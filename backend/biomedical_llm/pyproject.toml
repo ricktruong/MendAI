@@ -15,8 +15,8 @@ python-dotenv = "<1.1.0"
 uvicorn = "<0.24.0"
 common = {path = "../common"}
 
-# PyTorch for Jetson AGX Orin (ARM64) with CUDA support
-torch = {url = "https://developer.download.nvidia.com/compute/redist/jp/v511/pytorch/torch-2.0.0+nv23.05-cp38-cp38-linux_aarch64.whl"}
+# PyTorch for x86_64 systems
+torch = "^2.0.0"
 monai = "<1.0.0"
 transformers = ">=4.20.0,<4.30.0"
 sacremoses = "^0.1.1"

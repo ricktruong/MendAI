@@ -13,6 +13,9 @@ const PatientDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const patient = location.state?.patient;
 
+  // Debug patient data
+  console.log('Dashboard received patient data:', patient);
+
   // Tab management
   const [activeTab, setActiveTab] = useState<TabType>('summary');
 
@@ -36,6 +39,8 @@ const PatientDashboardPage: React.FC = () => {
   const [ctImages, setCtImages] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [patientFiles, setPatientFiles] = useState<any[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   // AI Analysis state
@@ -54,54 +59,84 @@ const PatientDashboardPage: React.FC = () => {
     }
   }, [navigate]);
 
-  // Load CT images for the selected patient
+  // Load CT files for the selected patient
   useEffect(() => {
-    const loadPatientImages = async () => {
+    const loadPatientFiles = async () => {
       if (!patient) {
+        setPatientFiles([]);
         setCtImages([]);
         return;
       }
 
       try {
         setLoadingImages(true);
-        
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
-          },
-        });
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.images && data.images.length > 0) {
-            setCtImages(data.images);
+        // Always fetch the latest files from API to ensure we have current data
+        const filesResponse = await apiService.getPatientFiles(patient.id);
+
+        if (filesResponse.success && filesResponse.files && filesResponse.files.length > 0) {
+          console.log('Loaded files for patient:', filesResponse.files);
+          const dcmFiles = filesResponse.files.filter(file =>
+            file.file_name.toLowerCase().endsWith('.dcm')
+          );
+          console.log('Filtered DICOM files:', dcmFiles);
+          setPatientFiles(dcmFiles);
+
+          if (dcmFiles.length > 0) {
+            // Fetch actual CT images from the backend
+            try {
+              const imagesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+
+              if (imagesResponse.ok) {
+                const imagesData = await imagesResponse.json();
+                if (imagesData.images && imagesData.images.length > 0) {
+                  setCtImages(imagesData.images);
+                  setCurrentFileIndex(0);
+                  setCurrentImageIndex(0);
+                  console.log('Loaded CT images:', imagesData.images.length);
+                } else {
+                  throw new Error('No images returned from backend');
+                }
+              } else {
+                throw new Error(`Images API failed: ${imagesResponse.status}`);
+              }
+            } catch (imageError) {
+              console.error('Failed to load CT images:', imageError);
+              // Fallback to placeholder
+              setCtImages([
+                'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">Image Load Failed</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Check console for details</text></svg>'
+              ]);
+            }
           } else {
-            // Fallback to placeholder images
+            // No DICOM files found
             setCtImages([
-              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><circle cx="200" cy="200" r="120" fill="%23d1d5db" stroke="%236b7280" stroke-width="3"/><text x="200" y="190" font-family="Arial" font-size="16" fill="%23374151" text-anchor="middle">CT Scan - Axial</text><text x="200" y="210" font-family="Arial" font-size="14" fill="%236b7280" text-anchor="middle">Slice 1 of 3</text></svg>',
-              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><ellipse cx="200" cy="200" rx="80" ry="120" fill="%23d1d5db" stroke="%236b7280" stroke-width="3"/><text x="200" y="190" font-family="Arial" font-size="16" fill="%23374151" text-anchor="middle">CT Scan - Sagittal</text><text x="200" y="210" font-family="Arial" font-size="14" fill="%236b7280" text-anchor="middle">Slice 2 of 3</text></svg>',
-              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><ellipse cx="200" cy="200" rx="120" ry="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="3"/><text x="200" y="190" font-family="Arial" font-size="16" fill="%23374151" text-anchor="middle">CT Scan - Coronal</text><text x="200" y="210" font-family="Arial" font-size="14" fill="%236b7280" text-anchor="middle">Slice 3 of 3</text></svg>'
+              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">No DICOM Files</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Please upload .dcm files</text></svg>'
             ]);
           }
         } else {
-          // Fallback placeholder
+          // No files available
           setCtImages([
-            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><circle cx="200" cy="200" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="200" y="205" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">No Images Available</text></svg>'
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><circle cx="200" cy="200" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="200" y="195" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">No CT Files</text><text x="200" y="215" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">Upload DICOM files</text></svg>'
           ]);
         }
       } catch (error) {
-        console.error('Error loading patient images:', error);
+        console.error('Error loading patient files:', error);
+        console.error('Patient data:', patient);
         setCtImages([
-          'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><circle cx="200" cy="200" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="200" y="205" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">Loading Failed</text></svg>'
+          'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">Loading Failed</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Check console for details</text></svg>'
         ]);
       } finally {
         setLoadingImages(false);
       }
     };
 
-    loadPatientImages();
+    loadPatientFiles();
   }, [patient]);
 
   // Chat functionality
@@ -168,13 +203,30 @@ const PatientDashboardPage: React.FC = () => {
     }
   };
 
-  // Image navigation
+  // File navigation
+  const handlePrevFile = () => {
+    if (patientFiles.length > 0) {
+      const newIndex = (currentFileIndex - 1 + patientFiles.length) % patientFiles.length;
+      setCurrentFileIndex(newIndex);
+      setCurrentImageIndex(newIndex);
+    }
+  };
+
+  const handleNextFile = () => {
+    if (patientFiles.length > 0) {
+      const newIndex = (currentFileIndex + 1) % patientFiles.length;
+      setCurrentFileIndex(newIndex);
+      setCurrentImageIndex(newIndex);
+    }
+  };
+
+  // Legacy image navigation (for backward compatibility)
   const handlePrevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + ctImages.length) % ctImages.length);
+    handlePrevFile();
   };
 
   const handleNextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % ctImages.length);
+    handleNextFile();
   };
 
   // AI Analysis function
@@ -378,9 +430,15 @@ const PatientDashboardPage: React.FC = () => {
                     <span className="value">{patient?.uploadedAt || 'N/A'}</span>
                   </div>
                   <div className="summary-item">
-                    <span className="label">File Name:</span>
+                    <span className="label">Primary File:</span>
                     <span className="value">{patient?.fileName || 'No file attached'}</span>
                   </div>
+                  {patientFiles.length > 0 && (
+                    <div className="summary-item">
+                      <span className="label">Total DICOM Files:</span>
+                      <span className="value">{patientFiles.length} CT scan files</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -410,11 +468,26 @@ const PatientDashboardPage: React.FC = () => {
                       onClick={() => setPreviewModalOpen(true)}
                     />
                     <div className="ct-controls">
-                      <button onClick={handlePrevImage} className="nav-btn">◀ Previous</button>
+                      <button
+                        onClick={handlePrevFile}
+                        className="nav-btn"
+                        disabled={patientFiles.length <= 1}
+                      >
+                        ◀ Previous File
+                      </button>
                       <span className="slice-info">
-                        Slice {currentImageIndex + 1} of {ctImages.length}
+                        {patientFiles.length > 0
+                          ? `File ${currentFileIndex + 1} of ${patientFiles.length}: ${patientFiles[currentFileIndex]?.file_name || 'Loading...'}`
+                          : `Image ${currentImageIndex + 1} of ${ctImages.length}`
+                        }
                       </span>
-                      <button onClick={handleNextImage} className="nav-btn">Next ▶</button>
+                      <button
+                        onClick={handleNextFile}
+                        className="nav-btn"
+                        disabled={patientFiles.length <= 1}
+                      >
+                        Next File ▶
+                      </button>
                     </div>
                   </>
                 ) : (
@@ -426,16 +499,72 @@ const PatientDashboardPage: React.FC = () => {
               
               <div className="ct-sidebar">
                 <div className="ct-info-card">
-                  <h4>Study Information</h4>
-                  <div className="info-item">
-                    <span>Study Date:</span>
-                    <span>{patient?.uploadedAt}</span>
-                  </div>
-                  <div className="info-item">
-                    <span>File Name:</span>
-                    <span>{patient?.fileName || 'No file'}</span>
-                  </div>
+                  <h4>Current File Information</h4>
+                  {patientFiles.length > 0 && patientFiles[currentFileIndex] ? (
+                    <>
+                      <div className="info-item">
+                        <span>File Name:</span>
+                        <span>{patientFiles[currentFileIndex].file_name}</span>
+                      </div>
+                      <div className="info-item">
+                        <span>Upload Date:</span>
+                        <span>{new Date(patientFiles[currentFileIndex].uploaded_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="info-item">
+                        <span>File ID:</span>
+                        <span>{patientFiles[currentFileIndex].id}</span>
+                      </div>
+                      <div className="info-item">
+                        <span>File Type:</span>
+                        <span>DICOM (.dcm)</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="info-item">
+                        <span>Study Date:</span>
+                        <span>{patient?.uploadedAt}</span>
+                      </div>
+                      <div className="info-item">
+                        <span>File Name:</span>
+                        <span>{patient?.fileName || 'No file'}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {patientFiles.length > 1 && (
+                  <div className="ct-info-card">
+                    <h4>All Patient Files</h4>
+                    <div className="files-list-compact">
+                      {patientFiles.map((file, index) => (
+                        <div
+                          key={file.id}
+                          className={`file-item ${index === currentFileIndex ? 'active' : ''}`}
+                          onClick={() => {
+                            setCurrentFileIndex(index);
+                            setCurrentImageIndex(index);
+                          }}
+                          style={{
+                            padding: '8px',
+                            cursor: 'pointer',
+                            backgroundColor: index === currentFileIndex ? '#e5e7eb' : 'transparent',
+                            borderRadius: '4px',
+                            marginBottom: '4px',
+                            border: index === currentFileIndex ? '2px solid #3b82f6' : '1px solid #d1d5db'
+                          }}
+                        >
+                          <div style={{ fontWeight: '500', fontSize: '0.875rem' }}>
+                            {file.file_name}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                            {new Date(file.uploaded_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
