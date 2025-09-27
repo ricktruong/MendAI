@@ -62,6 +62,12 @@ export interface Patient {
   gender?: string;
 }
 
+export interface PatientFile {
+  id: string;
+  file_name: string;
+  uploaded_at: string;
+}
+
 export interface PatientListData {
   patients: Patient[];
   recent_cases: Array<{
@@ -69,6 +75,7 @@ export interface PatientListData {
     patient_name: string;
     file_name: string;
     uploaded_at: string;
+    files?: PatientFile[];
   }>;
 }
 
@@ -282,6 +289,18 @@ class ApiService {
       console.error(`Create patient request failed`, error);
       throw error;
     }
+  }
+
+  // Get patient files
+  async getPatientFiles(caseId: string): Promise<{ success: boolean; files: PatientFile[]; message: string }> {
+    return await this.makeRequest<{ success: boolean; files: PatientFile[]; message: string }>(`/patients/${caseId}/files`);
+  }
+
+  // Delete patient file
+  async deletePatientFile(caseId: string, fileId: string): Promise<{ success: boolean; message: string }> {
+    return await this.makeRequest<{ success: boolean; message: string }>(`/patients/${caseId}/files/${fileId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Health check

@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './PatientListPage.css';
 import { apiService } from '../../services/api';
-import type { PatientListData } from '../../services/api';
+import type { PatientListData, PatientFile } from '../../services/api';
 
 interface CtCase {
   id: string;
   patientName: string;
   fileName: string;
   uploadedAt: string;
+  files?: PatientFile[];
 }
 
 const PatientListPage: React.FC = () => {
@@ -21,6 +22,7 @@ const PatientListPage: React.FC = () => {
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [showEditPatientModal, setShowEditPatientModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFilesModal, setShowFilesModal] = useState(false);
   const [newPatient, setNewPatient] = useState({
     patientName: '',
     fileName: '',
@@ -35,6 +37,8 @@ const PatientListPage: React.FC = () => {
   const [deletePatientId, setDeletePatientId] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deleteFile, setDeleteFile] = useState(false);
+  const [currentPatientFiles, setCurrentPatientFiles] = useState<PatientFile[]>([]);
+  const [viewingPatient, setViewingPatient] = useState<CtCase | null>(null);
 
   // Check authentication and load dashboard data
   useEffect(() => {
@@ -58,6 +62,7 @@ const PatientListPage: React.FC = () => {
         patientName: caseData.patient_name,
         fileName: caseData.file_name,
         uploadedAt: caseData.uploaded_at,
+        files: caseData.files || [],
       }));
       
       setCtCases(cases);
@@ -110,6 +115,7 @@ const PatientListPage: React.FC = () => {
     setShowAddPatientModal(false);
     setShowEditPatientModal(false);
     setShowDeleteConfirm(false);
+    setShowFilesModal(false);
     setNewPatient({
       patientName: '',
       fileName: '',
@@ -124,6 +130,8 @@ const PatientListPage: React.FC = () => {
     setDeletePatientId('');
     setSelectedFile(null);
     setDeleteFile(false);
+    setCurrentPatientFiles([]);
+    setViewingPatient(null);
   };
 
   const handlePatientInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,10 +154,6 @@ const PatientListPage: React.FC = () => {
     }
   };
 
-  const handleDeleteFile = () => {
-    setDeleteFile(true);
-    setSelectedFile(null);
-  };
 
   const handleSubmitPatient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,16 +210,41 @@ const PatientListPage: React.FC = () => {
   };
 
   // Edit patient functionality
-  const handleEditPatient = (patient: CtCase) => {
-    setEditPatient({
-      id: patient.id,
-      patientName: patient.patientName,
-      fileName: patient.fileName,
-      uploadedAt: patient.uploadedAt
-    });
-    setDeleteFile(false);
-    setSelectedFile(null);
-    setShowEditPatientModal(true);
+  const handleEditPatient = async (patient: CtCase) => {
+    try {
+      setIsLoading(true);
+      setEditPatient({
+        id: patient.id,
+        patientName: patient.patientName,
+        fileName: patient.fileName,
+        uploadedAt: patient.uploadedAt
+      });
+      setDeleteFile(false);
+      setSelectedFile(null);
+      setViewingPatient(patient);
+
+      // Load current files for the patient
+      try {
+        const response = await apiService.getPatientFiles(patient.id);
+        if (response.success) {
+          setCurrentPatientFiles(response.files);
+        } else {
+          // Fallback to files from patient data
+          setCurrentPatientFiles(patient.files || []);
+        }
+      } catch (error) {
+        console.error('Error loading patient files:', error);
+        // Fallback to files from patient data
+        setCurrentPatientFiles(patient.files || []);
+      }
+
+      setShowEditPatientModal(true);
+    } catch (error) {
+      console.error('Error opening edit modal:', error);
+      alert(`Failed to open edit modal: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -253,24 +282,28 @@ const PatientListPage: React.FC = () => {
       const response = await apiService.updatePatient(editPatient.id, formData);
       
       if (response.success && response.case) {
-        // Update the case in the list
-        const updatedCases = ctCases.map(c => 
-          c.id === editPatient.id 
+        // Update the case in the list with new file information
+        const updatedCases = ctCases.map(c =>
+          c.id === editPatient.id
             ? {
                 id: response.case.id,
                 patientName: response.case.patient_name,
-                fileName: deleteFile ? '' : response.case.file_name, // Clear filename if deleted
-                uploadedAt: response.case.uploaded_at
+                fileName: response.case.file_name,
+                uploadedAt: response.case.uploaded_at,
+                files: response.case.files || []
               }
             : c
         );
-        
+
         setCtCases(updatedCases);
         setFilteredCases(updatedCases);
 
+        // Update current patient files display
+        setCurrentPatientFiles(response.case.files || []);
+
         // Close modal and reset form
         handleCloseModal();
-        
+
         alert('Patient updated successfully!');
       } else {
         throw new Error(response.message || 'Failed to update patient');
@@ -313,6 +346,76 @@ const PatientListPage: React.FC = () => {
     } catch (error) {
       console.error('Error deleting patient:', error);
       alert(`Failed to delete patient: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // View patient files functionality
+  const handleViewFiles = async (patient: CtCase) => {
+    try {
+      setIsLoading(true);
+      setViewingPatient(patient);
+
+      // Get current files from API
+      const response = await apiService.getPatientFiles(patient.id);
+
+      if (response.success) {
+        setCurrentPatientFiles(response.files);
+      } else {
+        // Fallback to files from patient data
+        setCurrentPatientFiles(patient.files || []);
+      }
+
+      setShowFilesModal(true);
+    } catch (error) {
+      console.error('Error loading patient files:', error);
+      alert(`Failed to load patient files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Delete individual file functionality
+  const handleDeleteIndividualFile = async (fileId: string) => {
+    if (!viewingPatient) return;
+
+    if (!confirm('Are you sure you want to delete this file?')) {
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      const response = await apiService.deletePatientFile(viewingPatient.id, fileId);
+
+      if (response.success) {
+        // Remove file from current list
+        const updatedFiles = currentPatientFiles.filter(f => f.id !== fileId);
+        setCurrentPatientFiles(updatedFiles);
+
+        // Update the main patient list
+        const updatedCases = ctCases.map(c =>
+          c.id === viewingPatient.id
+            ? {
+                ...c,
+                files: updatedFiles,
+                fileName: updatedFiles.length > 0 ? updatedFiles[0].file_name : '',
+                uploadedAt: updatedFiles.length > 0 ? updatedFiles[0].uploaded_at : c.uploadedAt
+              }
+            : c
+        );
+
+        setCtCases(updatedCases);
+        setFilteredCases(updatedCases);
+
+        alert('File deleted successfully!');
+      } else {
+        throw new Error(response.message || 'Failed to delete file');
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      alert(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -453,10 +556,42 @@ const PatientListPage: React.FC = () => {
                         <div className="study-type-cell">CT Scan</div>
                       </td>
                       <td>
-                        <div className="file-name-cell" title={ct.fileName}>
-                          {ct.fileName ? ct.fileName : (
+                        <div className="file-name-cell">
+                          {ct.files && ct.files.length > 0 ? (
+                            <div>
+                              <div title={ct.fileName}>
+                                {ct.fileName}
+                                {ct.files.length > 1 && (
+                                  <span style={{
+                                    color: '#3b82f6',
+                                    fontSize: '0.875rem',
+                                    marginLeft: '8px',
+                                    fontWeight: 'bold'
+                                  }}>
+                                    +{ct.files.length - 1} more
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                className="view-files-button"
+                                onClick={() => handleViewFiles(ct)}
+                                disabled={isLoading}
+                                style={{
+                                  fontSize: '0.75rem',
+                                  padding: '2px 6px',
+                                  marginTop: '4px',
+                                  backgroundColor: '#e5e7eb',
+                                  border: '1px solid #d1d5db',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                View All Files ({ct.files.length})
+                              </button>
+                            </div>
+                          ) : (
                             <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>
-                              No file attached
+                              No files attached
                             </span>
                           )}
                         </div>
@@ -554,7 +689,7 @@ const PatientListPage: React.FC = () => {
                     type="file"
                     id="file"
                     onChange={handleFileSelect}
-                    accept=".dcm,.jpg,.jpeg,.png,.pdf"
+                    accept=".dcm"
                     style={{ display: 'none' }}
                   />
                   <button 
@@ -565,7 +700,7 @@ const PatientListPage: React.FC = () => {
                     {selectedFile ? selectedFile.name : 'Select File'}
                   </button>
                   <p className="file-hint">
-                    Supported formats: DICOM (.dcm), Images, PDF
+                    Only DICOM (.dcm) files are supported for CT analysis
                   </p>
                 </div>
               </div>
@@ -635,121 +770,134 @@ const PatientListPage: React.FC = () => {
               <div className="form-group">
                 <label htmlFor="editFile">Patient Files</label>
                 <div className="file-input-wrapper">
-                  {/* Show existing file */}
-                  {editPatient.fileName && !deleteFile && (
-                    <div className="existing-file" style={{ 
-                      padding: '10px', 
-                      backgroundColor: '#f3f4f6', 
-                      borderRadius: '4px', 
-                      marginBottom: '10px',
-                      border: '1px solid #d1d5db'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <strong> {editPatient.fileName}</strong>
-                          <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                            Currently attached file
-                          </p>
-                        </div>
-                        <button 
-                          type="button"
-                          className="file-delete-button"
-                          onClick={handleDeleteFile}
-                          style={{ 
-                            backgroundColor: '#dc2626', 
-                            color: 'white', 
-                            padding: '6px 12px',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem'
-                          }}
-                        >
-                           Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {/* Current Files Section */}
+                  <div className="current-files-section" style={{ marginBottom: '20px' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', fontWeight: 'bold', color: '#374151' }}>
+                      Current Files ({currentPatientFiles.length})
+                    </h4>
 
-                  {/* Show file marked for deletion */}
-                  {editPatient.fileName && deleteFile && (
-                    <div className="deleted-file" style={{ 
-                      padding: '10px', 
-                      backgroundColor: '#fef2f2', 
-                      borderRadius: '4px', 
-                      marginBottom: '10px',
-                      border: '1px solid #fecaca'
-                    }}>
-                      <div style={{ color: '#dc2626' }}>
-                        <strong> {editPatient.fileName}</strong>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem' }}>
-                          This file will be deleted when you save changes
+                    {currentPatientFiles.length === 0 ? (
+                      <div className="no-files" style={{
+                        padding: '15px',
+                        backgroundColor: '#fefce8',
+                        borderRadius: '4px',
+                        border: '1px solid #fde047',
+                        textAlign: 'center'
+                      }}>
+                        <p style={{ margin: 0, color: '#a16207', fontSize: '0.875rem' }}>
+                          📁 No files currently attached to this patient
                         </p>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => setDeleteFile(false)}
-                        style={{ 
-                          backgroundColor: '#6b7280', 
-                          color: 'white', 
-                          padding: '4px 8px',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          marginTop: '6px'
-                        }}
-                      >
-                        Cancel Delete
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Show no file message */}
-                  {!editPatient.fileName && (
-                    <div className="no-file" style={{ 
-                      padding: '10px', 
-                      backgroundColor: '#fefce8', 
-                      borderRadius: '4px', 
-                      marginBottom: '10px',
-                      border: '1px solid #fde047'
-                    }}>
-                      <p style={{ margin: 0, color: '#a16207', fontSize: '0.875rem' }}>
-                        📝 No file currently attached to this patient
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{
+                        maxHeight: '200px',
+                        overflowY: 'auto',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '4px'
+                      }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                          <thead>
+                            <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>File Name</th>
+                              <th style={{ padding: '8px', textAlign: 'left', fontWeight: 'bold' }}>Upload Date</th>
+                              <th style={{ padding: '8px', textAlign: 'center', fontWeight: 'bold', width: '80px' }}>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {currentPatientFiles.map((file, index) => (
+                              <tr
+                                key={file.id}
+                                style={{
+                                  borderBottom: index < currentPatientFiles.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                  backgroundColor: 'white'
+                                }}
+                              >
+                                <td style={{ padding: '8px' }}>
+                                  <div style={{ fontWeight: '500' }}>{file.file_name}</div>
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                    {file.id}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '8px', color: '#6b7280' }}>
+                                  {new Date(file.uploaded_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </td>
+                                <td style={{ padding: '8px', textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteIndividualFile(file.id)}
+                                    disabled={isLoading}
+                                    style={{
+                                      backgroundColor: '#dc2626',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '4px 8px',
+                                      borderRadius: '3px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.75rem'
+                                    }}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Upload new file section */}
-                  <div className="upload-section" style={{ marginTop: '15px' }}>
+                  <div className="upload-section" style={{ borderTop: '1px solid #e5e7eb', paddingTop: '15px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.875rem', fontWeight: 'bold' }}>
-                      Upload New File (Optional)
+                      Add New File
                     </label>
                     <input
                       type="file"
                       id="editFile"
                       onChange={handleFileSelect}
-                      accept=".dcm,.jpg,.jpeg,.png,.pdf"
+                      accept=".dcm"
                       style={{ display: 'none' }}
                     />
-                    <button 
+                    <button
                       type="button"
                       className="file-select-button"
                       onClick={() => document.getElementById('editFile')?.click()}
-                      disabled={deleteFile}
-                      style={{ 
-                        backgroundColor: '#3b82f6', 
-                        color: 'white', 
+                      style={{
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
                         padding: '8px 16px',
                         border: 'none',
                         borderRadius: '4px',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        marginRight: '10px'
                       }}
                     >
-                      {selectedFile ? `📎 ${selectedFile.name}` : ' Choose New File'}
+                      {selectedFile ? `📎 ${selectedFile.name}` : ' Choose File'}
                     </button>
+                    {selectedFile && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedFile(null)}
+                        style={{
+                          backgroundColor: '#6b7280',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 12px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
                     <p className="file-hint" style={{ margin: '8px 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                      Supported formats: DICOM (.dcm), Images, PDF
+                      Only DICOM (.dcm) files are supported for CT analysis. New files will be added to existing files.
                     </p>
                   </div>
                 </div>
@@ -814,6 +962,133 @@ const PatientListPage: React.FC = () => {
                 >
                   Delete Patient
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Files View Modal */}
+      {showFilesModal && viewingPatient && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content files-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Files for {viewingPatient.patientName}</h3>
+              <button
+                className="modal-close-button"
+                onClick={handleCloseModal}
+                aria-label="Close modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="files-list">
+              {currentPatientFiles.length === 0 ? (
+                <div className="empty-state" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
+                  <h3>No Files</h3>
+                  <p>This patient doesn't have any files uploaded yet.</p>
+                </div>
+              ) : (
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>File Name</th>
+                        <th style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold' }}>Upload Date</th>
+                        <th style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentPatientFiles.map((file, index) => (
+                        <tr
+                          key={file.id}
+                          style={{
+                            borderBottom: '1px solid #e5e7eb',
+                            backgroundColor: index % 2 === 0 ? '#f9fafb' : 'white'
+                          }}
+                        >
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ fontWeight: '500' }}>{file.file_name}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              ID: {file.id}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px', color: '#6b7280' }}>
+                            {new Date(file.uploaded_at).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleDeleteIndividualFile(file.id)}
+                              disabled={isLoading}
+                              style={{
+                                backgroundColor: '#dc2626',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  Total files: {currentPatientFiles.length}
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    className="cancel-button"
+                    onClick={handleCloseModal}
+                    style={{
+                      marginRight: '12px',
+                      backgroundColor: '#6b7280',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCloseModal();
+                      handleEditPatient(viewingPatient);
+                    }}
+                    style={{
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 16px',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Add More Files
+                  </button>
+                </div>
               </div>
             </div>
           </div>
