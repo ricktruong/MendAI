@@ -250,44 +250,102 @@ const PatientDashboardPage: React.FC = () => {
     }
 
     setLoadingAiAnalysis(true);
-    
+
     try {
-      // TODO: Replace with actual API call to AI analysis service
-      // For now, simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Mock AI analysis results - replace with actual API response
-      const mockResults = [
+      // Get all files for this patient
+      const fileIds = patientFiles.map(f => f.id);
+      const fileNames = patientFiles.map(f => f.file_name);
+
+      console.log(`Analyzing ${fileIds.length} files for patient ${patient.id}`);
+
+      // Call the comprehensive analysis API
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/analyze/comprehensive`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patient_id: patient.id,
+          file_ids: fileIds.length > 0 ? fileIds : ['default-file'],
+          file_names: fileNames.length > 0 ? fileNames : [patient.fileName || 'CT_Scan.dcm']
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status}`);
+      }
+
+      const analysisData = await response.json();
+      console.log('Analysis completed:', analysisData);
+
+      // Format results for display
+      const results = [
         {
           id: 1,
           priority: 'high',
-          icon: '!',
-          title: 'Automated Analysis Results',
-          content: `Analysis of ${patient.fileName || 'uploaded CT scan'} completed. AI processing detected potential areas of interest for clinical review.`,
+          icon: '📊',
+          title: 'Comprehensive Analysis Summary',
+          content: analysisData.comprehensive_summary,
           details: [
-            'Analysis completed successfully',
-            'Confidence: AI analysis ready for review',
-            'Patient ID: ' + patient.id
+            `Files Analyzed: ${analysisData.files_analyzed}`,
+            `Overall Confidence: ${(analysisData.overall_confidence * 100).toFixed(0)}%`,
+            `Analysis Date: ${new Date().toLocaleString()}`
           ]
+        },
+        {
+          id: 2,
+          priority: 'high',
+          icon: '🔍',
+          title: 'Key Findings',
+          content: analysisData.key_findings.join('\n• '),
+          details: analysisData.key_findings
+        },
+        {
+          id: 3,
+          priority: 'medium',
+          icon: '💡',
+          title: 'Clinical Recommendations',
+          content: analysisData.recommendations.join('\n• '),
+          details: analysisData.recommendations
         }
       ];
-      
-      setAiResults(mockResults);
+
+      // Add individual file results
+      analysisData.file_results.forEach((fileResult: any, index: number) => {
+        results.push({
+          id: 100 + index,
+          priority: 'medium',
+          icon: '📄',
+          title: `File Analysis: ${fileResult.file_name}`,
+          content: fileResult.findings.join('\n• '),
+          details: [
+            `File: ${fileResult.file_name}`,
+            `Confidence: ${(fileResult.confidence * 100).toFixed(0)}%`,
+            ...fileResult.findings
+          ]
+        });
+      });
+
+      setAiResults(results);
       setAiAnalysisCompleted(true);
-      
+
     } catch (error) {
       console.error('AI Analysis failed:', error);
       setAiResults([
         {
           id: 1,
           priority: 'medium',
-          icon: 'i',
+          icon: '⚠️',
           title: 'Analysis Status',
           content: 'AI analysis service is currently unavailable. Please try again later or contact support.',
           details: [
             'Status: Service unavailable',
             'Patient ID: ' + patient.id,
-            'Timestamp: ' + new Date().toLocaleString()
+            'Timestamp: ' + new Date().toLocaleString(),
+            'Error: ' + (error instanceof Error ? error.message : 'Unknown error')
           ]
         }
       ]);
@@ -698,7 +756,7 @@ const PatientDashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="result-content">
-                      <p>{result.content}</p>
+                      <p style={{ whiteSpace: 'pre-line' }}>{result.content}</p>
                       <div className="result-details">
                         {result.details.map((detail: string, index: number) => (
                           <span key={index}>{detail}</span>
