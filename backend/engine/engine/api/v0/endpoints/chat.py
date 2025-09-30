@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException
 import logging
+from typing import List, Dict, Any
+from pydantic import BaseModel
 
 from ....data_models.chat import ChatRequest, ChatResponse, Message, AnalysisResult
 from datetime import datetime
@@ -7,6 +9,27 @@ import uuid
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# AI Analysis Models
+class FileAnalysisRequest(BaseModel):
+    patient_id: str
+    file_ids: List[str]
+    file_names: List[str]
+
+class FileAnalysisResult(BaseModel):
+    file_id: str
+    file_name: str
+    findings: List[str]
+    confidence: float
+
+class ComprehensiveAnalysisResponse(BaseModel):
+    patient_id: str
+    files_analyzed: int
+    file_results: List[FileAnalysisResult]
+    comprehensive_summary: str
+    key_findings: List[str]
+    recommendations: List[str]
+    overall_confidence: float
 
 # 3. Patient Dashboard Page (formerly Chat Page)
 # I.User Message Request
