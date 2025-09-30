@@ -35,6 +35,9 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
 # Copy Patient Data service code into container
 COPY --chown=app patient_data/ ./
 
+# Copy Google service account credentials
+COPY --chown=app patient_data/mendai-470816-d39912146cc6.json ./
+
 USER app
 
 EXPOSE 8001
