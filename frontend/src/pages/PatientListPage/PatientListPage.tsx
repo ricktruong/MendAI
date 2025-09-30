@@ -10,6 +10,16 @@ interface CtCase {
   fileName: string;
   uploadedAt: string;
   files?: PatientFile[];
+  // Additional fields from normalized patient format
+  fhirId?: string;
+  birthDate?: string;
+  gender?: string;
+  race?: string;
+  ethnicity?: string;
+  maritalStatus?: string;
+  managingOrganization?: string;
+  language?: string | null;
+  deceasedDateTime?: string | null;
 }
 
 const PatientListPage: React.FC = () => {
@@ -26,13 +36,27 @@ const PatientListPage: React.FC = () => {
   const [newPatient, setNewPatient] = useState({
     patientName: '',
     fileName: '',
-    uploadedAt: new Date().toISOString().split('T')[0]
+    uploadedAt: new Date().toISOString().split('T')[0],
+    birthDate: '',
+    gender: '',
+    race: '',
+    ethnicity: '',
+    maritalStatus: '',
+    managingOrganization: '',
+    language: ''
   });
   const [editPatient, setEditPatient] = useState({
     id: '',
     patientName: '',
     fileName: '',
-    uploadedAt: ''
+    uploadedAt: '',
+    birthDate: '',
+    gender: '',
+    race: '',
+    ethnicity: '',
+    maritalStatus: '',
+    managingOrganization: '',
+    language: ''
   });
   const [deletePatientId, setDeletePatientId] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -63,6 +87,14 @@ const PatientListPage: React.FC = () => {
         fileName: caseData.file_name,
         uploadedAt: caseData.uploaded_at,
         files: caseData.files || [],
+        fhirId: caseData.fhirId,
+        birthDate: caseData.birthDate,
+        gender: caseData.gender,
+        race: caseData.race,
+        ethnicity: caseData.ethnicity,
+        maritalStatus: caseData.maritalStatus,
+        managingOrganization: caseData.managingOrganization,
+        language: caseData.language,
       }));
       
       setCtCases(cases);
@@ -71,11 +103,158 @@ const PatientListPage: React.FC = () => {
       console.error('Error loading patient list data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load patient list data');
       
-      // Fallback to mock data
+      // Fallback to mock data with normalized patient format
       const fallbackCases = [
-        { id: 'ct-001', patientName: 'John Doe', fileName: 'CT_Head_001.dcm', uploadedAt: '2025-01-27' },
-        { id: 'ct-002', patientName: 'Jane Smith', fileName: 'CT_Chest_045.dcm', uploadedAt: '2025-01-25' },
-        { id: 'ct-003', patientName: 'Maria Garcia', fileName: 'CT_Abdomen_102.dcm', uploadedAt: '2025-01-22' },
+        {
+          id: '14889227',
+          fhirId: '07962bbc-98bf-5586-9988-603d6414295c',
+          patientName: 'Sarah Johnson',
+          birthDate: '1978-01-16',
+          gender: 'female',
+          race: 'White',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'M',
+          managingOrganization: 'Beth Israel Deaconess Medical Center',
+          fileName: 'CT_Head_001.dcm',
+          uploadedAt: '2025-09-28',
+          language: 'en',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889228',
+          fhirId: 'a1b2c3d4-5678-9abc-def0-123456789abc',
+          patientName: 'Michael Chen',
+          birthDate: '1965-05-22',
+          gender: 'male',
+          race: 'Asian',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'M',
+          managingOrganization: 'Massachusetts General Hospital',
+          fileName: 'CT_Chest_045.dcm',
+          uploadedAt: '2025-09-27',
+          language: 'en',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889229',
+          fhirId: 'b2c3d4e5-6789-0abc-def1-234567890bcd',
+          patientName: 'Maria Garcia',
+          birthDate: '1992-11-03',
+          gender: 'female',
+          race: 'Other',
+          ethnicity: 'Hispanic or Latino',
+          maritalStatus: 'S',
+          managingOrganization: 'Boston Medical Center',
+          fileName: 'CT_Abdomen_102.dcm',
+          uploadedAt: '2025-09-26',
+          language: 'es',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889230',
+          fhirId: 'c3d4e5f6-7890-1bcd-ef12-34567890cdef',
+          patientName: 'James Williams',
+          birthDate: '1955-07-14',
+          gender: 'male',
+          race: 'Black or African American',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'W',
+          managingOrganization: 'Brigham and Women\'s Hospital',
+          fileName: 'CT_Brain_Trauma_003.dcm',
+          uploadedAt: '2025-09-25',
+          language: 'en',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889231',
+          fhirId: 'd4e5f6g7-8901-2cde-f123-4567890defgh',
+          patientName: 'Emily Rodriguez',
+          birthDate: '1980-03-28',
+          gender: 'female',
+          race: 'White',
+          ethnicity: 'Hispanic or Latino',
+          maritalStatus: 'D',
+          managingOrganization: 'Tufts Medical Center',
+          fileName: 'CT_Spine_067.dcm',
+          uploadedAt: '2025-09-24',
+          language: 'en',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889232',
+          fhirId: 'e5f6g7h8-9012-3def-1234-567890efghij',
+          patientName: 'David Kim',
+          birthDate: '1970-12-10',
+          gender: 'male',
+          race: 'Asian',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'M',
+          managingOrganization: 'Beth Israel Deaconess Medical Center',
+          fileName: 'CT_Thorax_089.dcm',
+          uploadedAt: '2025-09-23',
+          language: 'ko',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889233',
+          fhirId: 'f6g7h8i9-0123-4efg-2345-67890fghijk1',
+          patientName: 'Jennifer Washington',
+          birthDate: '1988-08-19',
+          gender: 'female',
+          race: 'Black or African American',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'S',
+          managingOrganization: 'Boston Children\'s Hospital',
+          fileName: 'CT_Pelvis_045.dcm',
+          uploadedAt: '2025-09-22',
+          language: 'en',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889234',
+          fhirId: 'g7h8i9j0-1234-5fgh-3456-7890ghijkl12',
+          patientName: 'Robert Patel',
+          birthDate: '1963-04-07',
+          gender: 'male',
+          race: 'Asian',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'M',
+          managingOrganization: 'Massachusetts General Hospital',
+          fileName: 'CT_Neck_034.dcm',
+          uploadedAt: '2025-09-21',
+          language: 'hi',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889235',
+          fhirId: 'h8i9j0k1-2345-6ghi-4567-890hijklm123',
+          patientName: 'Linda Martinez',
+          birthDate: '1975-09-15',
+          gender: 'female',
+          race: 'White',
+          ethnicity: 'Hispanic or Latino',
+          maritalStatus: 'M',
+          managingOrganization: 'Lahey Hospital & Medical Center',
+          fileName: 'CT_Sinus_012.dcm',
+          uploadedAt: '2025-09-20',
+          language: 'es',
+          deceasedDateTime: null
+        },
+        {
+          id: '14889236',
+          fhirId: 'i9j0k1l2-3456-7hij-5678-90ijklmn1234',
+          patientName: 'Thomas Anderson',
+          birthDate: '1982-06-25',
+          gender: 'male',
+          race: 'White',
+          ethnicity: 'Not Hispanic or Latino',
+          maritalStatus: 'S',
+          managingOrganization: 'Beth Israel Deaconess Medical Center',
+          fileName: 'CT_Cardiac_078.dcm',
+          uploadedAt: '2025-09-19',
+          language: 'en',
+          deceasedDateTime: null
+        },
       ];
       setCtCases(fallbackCases);
       setFilteredCases(fallbackCases);
@@ -89,10 +268,16 @@ const PatientListPage: React.FC = () => {
     if (!searchQuery.trim()) {
       setFilteredCases(ctCases);
     } else {
+      const query = searchQuery.toLowerCase();
       const filtered = ctCases.filter(case_ =>
-        case_.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        case_.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        case_.id.toLowerCase().includes(searchQuery.toLowerCase())
+        case_.patientName.toLowerCase().includes(query) ||
+        case_.fileName.toLowerCase().includes(query) ||
+        case_.id.toLowerCase().includes(query) ||
+        case_.fhirId?.toLowerCase().includes(query) ||
+        case_.gender?.toLowerCase().includes(query) ||
+        case_.race?.toLowerCase().includes(query) ||
+        case_.ethnicity?.toLowerCase().includes(query) ||
+        case_.managingOrganization?.toLowerCase().includes(query)
       );
       setFilteredCases(filtered);
     }
@@ -119,13 +304,27 @@ const PatientListPage: React.FC = () => {
     setNewPatient({
       patientName: '',
       fileName: '',
-      uploadedAt: new Date().toISOString().split('T')[0]
+      uploadedAt: new Date().toISOString().split('T')[0],
+      birthDate: '',
+      gender: '',
+      race: '',
+      ethnicity: '',
+      maritalStatus: '',
+      managingOrganization: '',
+      language: ''
     });
     setEditPatient({
       id: '',
       patientName: '',
       fileName: '',
-      uploadedAt: ''
+      uploadedAt: '',
+      birthDate: '',
+      gender: '',
+      race: '',
+      ethnicity: '',
+      maritalStatus: '',
+      managingOrganization: '',
+      language: ''
     });
     setDeletePatientId('');
     setSelectedFile(null);
@@ -217,7 +416,14 @@ const PatientListPage: React.FC = () => {
         id: patient.id,
         patientName: patient.patientName,
         fileName: patient.fileName,
-        uploadedAt: patient.uploadedAt
+        uploadedAt: patient.uploadedAt,
+        birthDate: patient.birthDate || '',
+        gender: patient.gender || '',
+        race: patient.race || '',
+        ethnicity: patient.ethnicity || '',
+        maritalStatus: patient.maritalStatus || '',
+        managingOrganization: patient.managingOrganization || '',
+        language: patient.language || ''
       });
       setDeleteFile(false);
       setSelectedFile(null);
@@ -441,7 +647,7 @@ const PatientListPage: React.FC = () => {
               <input
                 type="text"
                 className="search-input"
-                placeholder="Search patients, case IDs, or file names..."
+                placeholder="Search by name, ID, gender, race, ethnicity, organization..."
                 value={searchQuery}
                 onChange={handleSearchChange}
               />
@@ -535,9 +741,13 @@ const PatientListPage: React.FC = () => {
               <table className="patients-table">
                 <thead>
                   <tr>
-                    <th>Case ID</th>
+                    <th>Patient ID</th>
                     <th>Patient Name</th>
-                    <th>Study Type</th>
+                    <th>Birth Date</th>
+                    <th>Gender</th>
+                    <th>Race</th>
+                    <th>Ethnicity</th>
+                    <th>Organization</th>
                     <th>File Name</th>
                     <th>Upload Date</th>
                     <th>Actions</th>
@@ -547,13 +757,50 @@ const PatientListPage: React.FC = () => {
                   {filteredCases.map((ct) => (
                     <tr key={ct.id} className="patient-row">
                       <td>
-                        <div className="case-id-cell">#{ct.id}</div>
+                        <div className="case-id-cell">
+                          <div style={{ fontWeight: '600' }}>#{ct.id}</div>
+                          {ct.fhirId && (
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }} title="FHIR ID">
+                              {ct.fhirId.substring(0, 8)}...
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div className="patient-name-cell">{ct.patientName}</div>
                       </td>
                       <td>
-                        <div className="study-type-cell">CT Scan</div>
+                        <div className="date-cell">
+                          {ct.birthDate
+                            ? new Date(ct.birthDate).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })
+                            : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>N/A</span>
+                          }
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ textTransform: 'capitalize' }}>
+                          {ct.gender || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>N/A</span>}
+                        </div>
+                      </td>
+                      <td>
+                        <div>{ct.race || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>N/A</span>}</div>
+                      </td>
+                      <td>
+                        <div>{ct.ethnicity || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>N/A</span>}</div>
+                      </td>
+                      <td>
+                        <div title={ct.managingOrganization}>
+                          {ct.managingOrganization
+                            ? (ct.managingOrganization.length > 25
+                                ? ct.managingOrganization.substring(0, 25) + '...'
+                                : ct.managingOrganization)
+                            : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>N/A</span>
+                          }
+                        </div>
                       </td>
                       <td>
                         <div className="file-name-cell">
@@ -598,16 +845,16 @@ const PatientListPage: React.FC = () => {
                       </td>
                       <td>
                         <div className="date-cell">
-                          {new Date(ct.uploadedAt).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
+                          {new Date(ct.uploadedAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
                           })}
                         </div>
                       </td>
                       <td>
                         <div className="actions-cell">
-                          <button 
+                          <button
                             className="table-edit-button"
                             onClick={() => handleEditPatient(ct)}
                             disabled={isLoading}
@@ -615,7 +862,7 @@ const PatientListPage: React.FC = () => {
                           >
                             Edit
                           </button>
-                          <button 
+                          <button
                             className="table-delete-button"
                             onClick={() => handleDeletePatient(ct.id)}
                             disabled={isLoading}
@@ -623,7 +870,7 @@ const PatientListPage: React.FC = () => {
                           >
                             Delete
                           </button>
-                          <button 
+                          <button
                             className="table-analyze-button"
                             onClick={() => navigate('/dashboard', { state: { patient: ct } })}
                             disabled={isLoading}
@@ -671,7 +918,117 @@ const PatientListPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="uploadedAt">Date *</label>
+                <label htmlFor="birthDate">Birth Date</label>
+                <input
+                  type="date"
+                  id="birthDate"
+                  name="birthDate"
+                  value={newPatient.birthDate}
+                  onChange={handlePatientInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="gender">Gender</label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={newPatient.gender}
+                  onChange={(e) => setNewPatient(prev => ({ ...prev, gender: e.target.value }))}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: '#f8fafc',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    color: '#1e293b',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="race">Race</label>
+                <input
+                  type="text"
+                  id="race"
+                  name="race"
+                  value={newPatient.race}
+                  onChange={handlePatientInputChange}
+                  placeholder="e.g., White, Asian, Black or African American"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="ethnicity">Ethnicity</label>
+                <input
+                  type="text"
+                  id="ethnicity"
+                  name="ethnicity"
+                  value={newPatient.ethnicity}
+                  onChange={handlePatientInputChange}
+                  placeholder="e.g., Hispanic or Latino, Not Hispanic or Latino"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="maritalStatus">Marital Status</label>
+                <select
+                  id="maritalStatus"
+                  name="maritalStatus"
+                  value={newPatient.maritalStatus}
+                  onChange={(e) => setNewPatient(prev => ({ ...prev, maritalStatus: e.target.value }))}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: '#f8fafc',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    color: '#1e293b',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <option value="">Select marital status</option>
+                  <option value="S">Single</option>
+                  <option value="M">Married</option>
+                  <option value="D">Divorced</option>
+                  <option value="W">Widowed</option>
+                  <option value="UNK">Unknown</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="managingOrganization">Managing Organization</label>
+                <input
+                  type="text"
+                  id="managingOrganization"
+                  name="managingOrganization"
+                  value={newPatient.managingOrganization}
+                  onChange={handlePatientInputChange}
+                  placeholder="e.g., General Hospital"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="language">Language</label>
+                <input
+                  type="text"
+                  id="language"
+                  name="language"
+                  value={newPatient.language}
+                  onChange={handlePatientInputChange}
+                  placeholder="e.g., en, es, fr"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="uploadedAt">Upload Date *</label>
                 <input
                   type="date"
                   id="uploadedAt"
@@ -692,7 +1049,7 @@ const PatientListPage: React.FC = () => {
                     accept=".dcm"
                     style={{ display: 'none' }}
                   />
-                  <button 
+                  <button
                     type="button"
                     className="file-select-button"
                     onClick={() => document.getElementById('file')?.click()}
@@ -706,15 +1063,15 @@ const PatientListPage: React.FC = () => {
               </div>
 
               <div className="modal-actions">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="cancel-button"
                   onClick={handleCloseModal}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="submit-button"
                   disabled={!newPatient.patientName.trim() || !selectedFile}
                 >
@@ -756,7 +1113,117 @@ const PatientListPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="editUploadedAt">Date *</label>
+                <label htmlFor="editBirthDate">Birth Date</label>
+                <input
+                  type="date"
+                  id="editBirthDate"
+                  name="birthDate"
+                  value={editPatient.birthDate}
+                  onChange={handleEditInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editGender">Gender</label>
+                <select
+                  id="editGender"
+                  name="gender"
+                  value={editPatient.gender}
+                  onChange={(e) => setEditPatient(prev => ({ ...prev, gender: e.target.value }))}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: '#f8fafc',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    color: '#1e293b',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="unknown">Unknown</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editRace">Race</label>
+                <input
+                  type="text"
+                  id="editRace"
+                  name="race"
+                  value={editPatient.race}
+                  onChange={handleEditInputChange}
+                  placeholder="e.g., White, Asian, Black or African American"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editEthnicity">Ethnicity</label>
+                <input
+                  type="text"
+                  id="editEthnicity"
+                  name="ethnicity"
+                  value={editPatient.ethnicity}
+                  onChange={handleEditInputChange}
+                  placeholder="e.g., Hispanic or Latino, Not Hispanic or Latino"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editMaritalStatus">Marital Status</label>
+                <select
+                  id="editMaritalStatus"
+                  name="maritalStatus"
+                  value={editPatient.maritalStatus}
+                  onChange={(e) => setEditPatient(prev => ({ ...prev, maritalStatus: e.target.value }))}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: '#f8fafc',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '8px',
+                    color: '#1e293b',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <option value="">Select marital status</option>
+                  <option value="S">Single</option>
+                  <option value="M">Married</option>
+                  <option value="D">Divorced</option>
+                  <option value="W">Widowed</option>
+                  <option value="UNK">Unknown</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editManagingOrganization">Managing Organization</label>
+                <input
+                  type="text"
+                  id="editManagingOrganization"
+                  name="managingOrganization"
+                  value={editPatient.managingOrganization}
+                  onChange={handleEditInputChange}
+                  placeholder="e.g., General Hospital"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editLanguage">Language</label>
+                <input
+                  type="text"
+                  id="editLanguage"
+                  name="language"
+                  value={editPatient.language}
+                  onChange={handleEditInputChange}
+                  placeholder="e.g., en, es, fr"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="editUploadedAt">Upload Date *</label>
                 <input
                   type="date"
                   id="editUploadedAt"

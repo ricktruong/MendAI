@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Optional
+import os
+from pathlib import Path
+from engine.utils.dicom_processor import dicom_processor
 
 router = APIRouter()
 
@@ -16,6 +19,7 @@ class PatientFile(BaseModel):
     id: str
     file_name: str
     uploaded_at: str
+    file_path: Optional[str] = None  # Path to saved file on disk
 
 class RecentCase(BaseModel):
     id: str
@@ -23,6 +27,14 @@ class RecentCase(BaseModel):
     file_name: str  # Keep for backward compatibility
     uploaded_at: str
     files: List[PatientFile] = []  # New field for multiple files
+    fhirId: Optional[str] = None
+    birthDate: Optional[str] = None
+    gender: Optional[str] = None
+    race: Optional[str] = None
+    ethnicity: Optional[str] = None
+    maritalStatus: Optional[str] = None
+    managingOrganization: Optional[str] = None
+    language: Optional[str] = None
 
 class PatientListResponse(BaseModel):
     patients: List[Patient]
@@ -57,34 +69,154 @@ class DeletePatientResponse(BaseModel):
 # In-memory storage for demo (in production, this would be a database)
 stored_cases = [
     RecentCase(
-        id="ct-001",
-        patient_name="John Doe",
-        file_name="CT_Head_001.dcm",  # Primary file for backward compatibility
-        uploaded_at="2025-01-27",
-        files=[
-            PatientFile(id="file-001-1", file_name="CT_Head_001.dcm", uploaded_at="2025-01-27"),
-            PatientFile(id="file-001-2", file_name="CT_Head_002.dcm", uploaded_at="2025-01-26"),
-        ]
+        id="14889227",
+        patient_name="Sarah Johnson",
+        file_name="CT_Head_001.dcm",
+        uploaded_at="2025-09-28",
+        files=[PatientFile(id="file-001-1", file_name="CT_Head_001.dcm", uploaded_at="2025-09-28", file_path=None)],
+        fhirId="07962bbc-98bf-5586-9988-603d6414295c",
+        birthDate="1978-01-16",
+        gender="female",
+        race="White",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="M",
+        managingOrganization="Beth Israel Deaconess Medical Center",
+        language="en"
     ),
     RecentCase(
-        id="ct-002",
-        patient_name="Jane Smith",
+        id="14889228",
+        patient_name="Michael Chen",
         file_name="CT_Chest_045.dcm",
-        uploaded_at="2025-01-25",
-        files=[
-            PatientFile(id="file-002-1", file_name="CT_Chest_045.dcm", uploaded_at="2025-01-25"),
-        ]
+        uploaded_at="2025-09-27",
+        files=[PatientFile(id="file-002-1", file_name="CT_Chest_045.dcm", uploaded_at="2025-09-27", file_path=None)],
+        fhirId="a1b2c3d4-5678-9abc-def0-123456789abc",
+        birthDate="1965-05-22",
+        gender="male",
+        race="Asian",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="M",
+        managingOrganization="Massachusetts General Hospital",
+        language="en"
     ),
     RecentCase(
-        id="ct-003",
+        id="14889229",
         patient_name="Maria Garcia",
         file_name="CT_Abdomen_102.dcm",
-        uploaded_at="2025-01-22",
-        files=[
-            PatientFile(id="file-003-1", file_name="CT_Abdomen_102.dcm", uploaded_at="2025-01-22"),
-            PatientFile(id="file-003-2", file_name="CT_Abdomen_103.dcm", uploaded_at="2025-01-21"),
-            PatientFile(id="file-003-3", file_name="CT_Abdomen_104.dcm", uploaded_at="2025-01-20"),
-        ]
+        uploaded_at="2025-09-26",
+        files=[PatientFile(id="file-003-1", file_name="CT_Abdomen_102.dcm", uploaded_at="2025-09-26", file_path=None)],
+        fhirId="b2c3d4e5-6789-0abc-def1-234567890bcd",
+        birthDate="1992-11-03",
+        gender="female",
+        race="Other",
+        ethnicity="Hispanic or Latino",
+        maritalStatus="S",
+        managingOrganization="Boston Medical Center",
+        language="es"
+    ),
+    RecentCase(
+        id="14889230",
+        patient_name="James Williams",
+        file_name="CT_Brain_Trauma_003.dcm",
+        uploaded_at="2025-09-25",
+        files=[PatientFile(id="file-004-1", file_name="CT_Brain_Trauma_003.dcm", uploaded_at="2025-09-25", file_path=None)],
+        fhirId="c3d4e5f6-7890-1bcd-ef12-34567890cdef",
+        birthDate="1955-07-14",
+        gender="male",
+        race="Black or African American",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="W",
+        managingOrganization="Brigham and Women's Hospital",
+        language="en"
+    ),
+    RecentCase(
+        id="14889231",
+        patient_name="Emily Rodriguez",
+        file_name="CT_Spine_067.dcm",
+        uploaded_at="2025-09-24",
+        files=[PatientFile(id="file-005-1", file_name="CT_Spine_067.dcm", uploaded_at="2025-09-24", file_path=None)],
+        fhirId="d4e5f6g7-8901-2cde-f123-4567890defgh",
+        birthDate="1980-03-28",
+        gender="female",
+        race="White",
+        ethnicity="Hispanic or Latino",
+        maritalStatus="D",
+        managingOrganization="Tufts Medical Center",
+        language="en"
+    ),
+    RecentCase(
+        id="14889232",
+        patient_name="David Kim",
+        file_name="CT_Thorax_089.dcm",
+        uploaded_at="2025-09-23",
+        files=[PatientFile(id="file-006-1", file_name="CT_Thorax_089.dcm", uploaded_at="2025-09-23", file_path=None)],
+        fhirId="e5f6g7h8-9012-3def-1234-567890efghij",
+        birthDate="1970-12-10",
+        gender="male",
+        race="Asian",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="M",
+        managingOrganization="Beth Israel Deaconess Medical Center",
+        language="ko"
+    ),
+    RecentCase(
+        id="14889233",
+        patient_name="Jennifer Washington",
+        file_name="CT_Pelvis_045.dcm",
+        uploaded_at="2025-09-22",
+        files=[PatientFile(id="file-007-1", file_name="CT_Pelvis_045.dcm", uploaded_at="2025-09-22", file_path=None)],
+        fhirId="f6g7h8i9-0123-4efg-2345-67890fghijk1",
+        birthDate="1988-08-19",
+        gender="female",
+        race="Black or African American",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="S",
+        managingOrganization="Boston Children's Hospital",
+        language="en"
+    ),
+    RecentCase(
+        id="14889234",
+        patient_name="Robert Patel",
+        file_name="CT_Neck_034.dcm",
+        uploaded_at="2025-09-21",
+        files=[PatientFile(id="file-008-1", file_name="CT_Neck_034.dcm", uploaded_at="2025-09-21", file_path=None)],
+        fhirId="g7h8i9j0-1234-5fgh-3456-7890ghijkl12",
+        birthDate="1963-04-07",
+        gender="male",
+        race="Asian",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="M",
+        managingOrganization="Massachusetts General Hospital",
+        language="hi"
+    ),
+    RecentCase(
+        id="14889235",
+        patient_name="Linda Martinez",
+        file_name="CT_Sinus_012.dcm",
+        uploaded_at="2025-09-20",
+        files=[PatientFile(id="file-009-1", file_name="CT_Sinus_012.dcm", uploaded_at="2025-09-20", file_path=None)],
+        fhirId="h8i9j0k1-2345-6ghi-4567-890hijklm123",
+        birthDate="1975-09-15",
+        gender="female",
+        race="White",
+        ethnicity="Hispanic or Latino",
+        maritalStatus="M",
+        managingOrganization="Lahey Hospital & Medical Center",
+        language="es"
+    ),
+    RecentCase(
+        id="14889236",
+        patient_name="Thomas Anderson",
+        file_name="CT_Cardiac_078.dcm",
+        uploaded_at="2025-09-19",
+        files=[PatientFile(id="file-010-1", file_name="CT_Cardiac_078.dcm", uploaded_at="2025-09-19", file_path=None)],
+        fhirId="i9j0k1l2-3456-7hij-5678-90ijklmn1234",
+        birthDate="1982-06-25",
+        gender="male",
+        race="White",
+        ethnicity="Not Hispanic or Latino",
+        maritalStatus="S",
+        managingOrganization="Beth Israel Deaconess Medical Center",
+        language="en"
     ),
 ]
 
@@ -139,11 +271,15 @@ async def create_patient(
         
         # Generate new case ID
         new_id = f"ct-{str(len(stored_cases) + 1).zfill(3)}"
-        
-        # TODO: In production, save file to storage (S3, local filesystem, etc.)
-        # For now, just use the uploaded filename
-        file_name = file.filename or f"uploaded_file_{new_id}"
-        
+
+        # Save uploaded file to disk
+        file_name = file.filename or f"uploaded_file_{new_id}.dcm"
+
+        # Read file content and save to disk
+        file_content = await file.read()
+        saved_file_path = dicom_processor.save_uploaded_file(file_content, file_name)
+        print(f"Saved uploaded file: {saved_file_path}")
+
         # Generate file ID
         file_id = f"file-{new_id}-1"
 
@@ -153,7 +289,7 @@ async def create_patient(
             patient_name=patient_name,
             file_name=file_name,  # Primary file for backward compatibility
             uploaded_at=uploaded_at,
-            files=[PatientFile(id=file_id, file_name=file_name, uploaded_at=uploaded_at)]
+            files=[PatientFile(id=file_id, file_name=file_name, uploaded_at=uploaded_at, file_path=saved_file_path)]
         )
 
         # Add to in-memory storage (in production, save to database)
@@ -226,7 +362,10 @@ async def update_patient(
                     updated_case.file_name = ""
         elif file and file.filename:
             # Add new file to the patient's file list (preserve existing files)
-            # TODO: In production, handle file upload to storage
+            # Save uploaded file to disk
+            file_content = await file.read()
+            saved_file_path = dicom_processor.save_uploaded_file(file_content, file.filename)
+            print(f"Saved updated file: {saved_file_path}")
 
             # Generate new file ID
             existing_file_count = len(updated_case.files) if updated_case.files else 0
@@ -236,7 +375,8 @@ async def update_patient(
             new_file = PatientFile(
                 id=new_file_id,
                 file_name=file.filename,
-                uploaded_at=uploaded_at
+                uploaded_at=uploaded_at,
+                file_path=saved_file_path
             )
 
             # Add to files list
@@ -426,31 +566,50 @@ async def get_patient_images(case_id: str) -> PatientImagesResponse:
                 f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23fef2f2'/><circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/><text x='200' y='190' font-family='Arial' font-size='14' fill='%23dc2626' text-anchor='middle'>No DICOM Files</text><text x='200' y='210' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>Upload .dcm files</text></svg>"
             ]
         else:
-            # Generate preview images for each DICOM file
-            # In a real system, this would convert DICOM to PNG/JPEG
-            # For now, create informative placeholders that look like medical images
+            # Convert DICOM files to actual viewable images
             sample_images = []
             for i, dicom_file in enumerate(dicom_files):
-                # Create a more realistic medical image placeholder
-                image_svg = f"""data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'>
-                    <defs>
-                        <radialGradient id='grad{i}' cx='50%' cy='50%' r='50%'>
-                            <stop offset='0%' style='stop-color:%23e5e7eb;stop-opacity:1' />
-                            <stop offset='70%' style='stop-color:%23d1d5db;stop-opacity:1' />
-                            <stop offset='100%' style='stop-color:%236b7280;stop-opacity:1' />
-                        </radialGradient>
-                    </defs>
-                    <rect width='400' height='400' fill='%23111827'/>
-                    <circle cx='200' cy='200' r='150' fill='url(%23grad{i})' opacity='0.8'/>
-                    <circle cx='200' cy='200' r='120' fill='none' stroke='%23f9fafb' stroke-width='2' opacity='0.6'/>
-                    <circle cx='200' cy='200' r='80' fill='none' stroke='%23f9fafb' stroke-width='1' opacity='0.4'/>
-                    <circle cx='200' cy='200' r='40' fill='none' stroke='%23f9fafb' stroke-width='1' opacity='0.3'/>
-                    <text x='200' y='50' font-family='monospace' font-size='12' fill='%23f9fafb' text-anchor='middle'>{dicom_file.file_name}</text>
-                    <text x='200' y='70' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>DICOM Image {i+1} of {len(dicom_files)}</text>
-                    <text x='200' y='370' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>Uploaded: {dicom_file.uploaded_at}</text>
-                    <text x='200' y='385' font-family='monospace' font-size='8' fill='%23a1a1aa' text-anchor='middle'>File ID: {dicom_file.id}</text>
-                </svg>"""
-                sample_images.append(image_svg)
+                if dicom_file.file_path and os.path.exists(dicom_file.file_path):
+                    # Try to convert actual DICOM file
+                    print(f"Converting DICOM file: {dicom_file.file_path}")
+                    converted_image = dicom_processor.convert_dicom_to_base64(dicom_file.file_path)
+
+                    if converted_image:
+                        print(f"Successfully converted {dicom_file.file_name}")
+                        sample_images.append(converted_image)
+                    else:
+                        print(f"Failed to convert {dicom_file.file_name}, using placeholder")
+                        # Fallback to placeholder if conversion fails
+                        placeholder_svg = f"""data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'>
+                            <rect width='400' height='400' fill='%23fef2f2'/>
+                            <circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/>
+                            <text x='200' y='180' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>DICOM Conversion Failed</text>
+                            <text x='200' y='200' font-family='Arial' font-size='10' fill='%23dc2626' text-anchor='middle'>{dicom_file.file_name}</text>
+                            <text x='200' y='220' font-family='Arial' font-size='10' fill='%23dc2626' text-anchor='middle'>Check server logs</text>
+                        </svg>"""
+                        sample_images.append(placeholder_svg)
+                else:
+                    print(f"No file path or file doesn't exist for {dicom_file.file_name}")
+                    # Create a placeholder for files without actual file data (legacy entries)
+                    placeholder_svg = f"""data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'>
+                        <defs>
+                            <radialGradient id='grad{i}' cx='50%' cy='50%' r='50%'>
+                                <stop offset='0%' style='stop-color:%23e5e7eb;stop-opacity:1' />
+                                <stop offset='70%' style='stop-color:%23d1d5db;stop-opacity:1' />
+                                <stop offset='100%' style='stop-color:%236b7280;stop-opacity:1' />
+                            </radialGradient>
+                        </defs>
+                        <rect width='400' height='400' fill='%23111827'/>
+                        <circle cx='200' cy='200' r='150' fill='url(%23grad{i})' opacity='0.8'/>
+                        <circle cx='200' cy='200' r='120' fill='none' stroke='%23f9fafb' stroke-width='2' opacity='0.6'/>
+                        <circle cx='200' cy='200' r='80' fill='none' stroke='%23f9fafb' stroke-width='1' opacity='0.4'/>
+                        <circle cx='200' cy='200' r='40' fill='none' stroke='%23f9fafb' stroke-width='1' opacity='0.3'/>
+                        <text x='200' y='50' font-family='monospace' font-size='12' fill='%23f9fafb' text-anchor='middle'>{dicom_file.file_name}</text>
+                        <text x='200' y='70' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>Legacy File - No Data</text>
+                        <text x='200' y='370' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>Uploaded: {dicom_file.uploaded_at}</text>
+                        <text x='200' y='385' font-family='monospace' font-size='8' fill='%23a1a1aa' text-anchor='middle'>File ID: {dicom_file.id}</text>
+                    </svg>"""
+                    sample_images.append(placeholder_svg)
         
         return PatientImagesResponse(
             success=True,

@@ -213,13 +213,14 @@
 .patients-table-container {
   background: white;
   border-radius: 12px;
-  overflow: hidden;
+  overflow-x: auto;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
   border: 1px solid #e2e8f0;
 }
 
 .patients-table {
   width: 100%;
+  min-width: 1200px;
   border-collapse: collapse;
   font-size: 0.875rem;
 }

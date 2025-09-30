@@ -80,12 +80,16 @@ const PatientDashboardPage: React.FC = () => {
             file.file_name.toLowerCase().endsWith('.dcm')
           );
           console.log('Filtered DICOM files:', dcmFiles);
+          console.log('Number of DICOM files found:', dcmFiles.length);
           setPatientFiles(dcmFiles);
 
           if (dcmFiles.length > 0) {
             // Fetch actual CT images from the backend
             try {
-              const imagesResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`, {
+              const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`;
+              console.log('Fetching images from:', apiUrl);
+
+              const imagesResponse = await fetch(apiUrl, {
                 method: 'GET',
                 headers: {
                   'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -93,17 +97,27 @@ const PatientDashboardPage: React.FC = () => {
                 },
               });
 
+              console.log('Images response status:', imagesResponse.status);
+              console.log('Images response ok:', imagesResponse.ok);
+
               if (imagesResponse.ok) {
                 const imagesData = await imagesResponse.json();
+                console.log('Images API response:', imagesData);
+
                 if (imagesData.images && imagesData.images.length > 0) {
+                  console.log('Setting CT images, count:', imagesData.images.length);
+                  console.log('First image preview:', imagesData.images[0].substring(0, 100) + '...');
                   setCtImages(imagesData.images);
                   setCurrentFileIndex(0);
                   setCurrentImageIndex(0);
-                  console.log('Loaded CT images:', imagesData.images.length);
+                  console.log('CT images set successfully');
                 } else {
+                  console.error('No images in response:', imagesData);
                   throw new Error('No images returned from backend');
                 }
               } else {
+                const errorText = await imagesResponse.text();
+                console.error('Images API error response:', errorText);
                 throw new Error(`Images API failed: ${imagesResponse.status}`);
               }
             } catch (imageError) {
@@ -415,19 +429,88 @@ const PatientDashboardPage: React.FC = () => {
             
             <div className="summary-grid">
               <div className="summary-card">
-                <h3>Patient Information</h3>
+                <h3>Patient Demographics</h3>
                 <div className="summary-items">
                   <div className="summary-item">
                     <span className="label">Patient Name:</span>
-                    <span className="value">{patient?.patientName || patient?.patient_name}</span>
+                    <span className="value">{patient?.patientName || patient?.patient_name || 'N/A'}</span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Patient ID:</span>
-                    <span className="value">{patient?.id}</span>
+                    <span className="value">{patient?.id || 'N/A'}</span>
+                  </div>
+                  {patient?.fhirId && (
+                    <div className="summary-item">
+                      <span className="label">FHIR ID:</span>
+                      <span className="value" style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{patient.fhirId}</span>
+                    </div>
+                  )}
+                  <div className="summary-item">
+                    <span className="label">Birth Date:</span>
+                    <span className="value">
+                      {patient?.birthDate
+                        ? new Date(patient.birthDate).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : 'N/A'}
+                    </span>
                   </div>
                   <div className="summary-item">
+                    <span className="label">Gender:</span>
+                    <span className="value" style={{ textTransform: 'capitalize' }}>
+                      {patient?.gender || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Race:</span>
+                    <span className="value">{patient?.race || 'N/A'}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Ethnicity:</span>
+                    <span className="value">{patient?.ethnicity || 'N/A'}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="label">Marital Status:</span>
+                    <span className="value">
+                      {patient?.maritalStatus === 'S' ? 'Single' :
+                       patient?.maritalStatus === 'M' ? 'Married' :
+                       patient?.maritalStatus === 'D' ? 'Divorced' :
+                       patient?.maritalStatus === 'W' ? 'Widowed' :
+                       patient?.maritalStatus === 'UNK' ? 'Unknown' :
+                       patient?.maritalStatus || 'N/A'}
+                    </span>
+                  </div>
+                  {patient?.language && (
+                    <div className="summary-item">
+                      <span className="label">Language:</span>
+                      <span className="value" style={{ textTransform: 'uppercase' }}>{patient.language}</span>
+                    </div>
+                  )}
+                  {patient?.managingOrganization && (
+                    <div className="summary-item">
+                      <span className="label">Managing Organization:</span>
+                      <span className="value">{patient.managingOrganization}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="summary-card">
+                <h3>Medical Records</h3>
+                <div className="summary-items">
+                  <div className="summary-item">
                     <span className="label">Upload Date:</span>
-                    <span className="value">{patient?.uploadedAt || 'N/A'}</span>
+                    <span className="value">
+                      {patient?.uploadedAt
+                        ? new Date(patient.uploadedAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : 'N/A'}
+                    </span>
                   </div>
                   <div className="summary-item">
                     <span className="label">Primary File:</span>

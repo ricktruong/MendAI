@@ -235,4 +235,15 @@ docker-compose.override.yml
 
 # Local development
 .local/
-local/ 
+local/
+
+# Documentation files (Word/Excel)
+*.docx
+*.doc
+*.xlsx
+*.xls
+*.pptx
+*.ppt
+
+# Specific files to ignore
+Patient Data Service Resources/ 
