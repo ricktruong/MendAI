@@ -225,23 +225,98 @@ stored_cases = [
 async def get_patient_list_data() -> DashboardResponse:
     """
     Get patient list data including patients and recent cases for Patient List Page
-    
+    Fetches real patient data from Google Healthcare FHIR API
+
     Returns:
         DashboardResponse: Patient list data with patients and recent cases
     """
+    import httpx
+    from datetime import datetime
+
     try:
-        # TODO: Implement actual data retrieval from database
-        # For now, using in-memory storage
-        
-        patients = [
-            Patient(id="1", name="John Doe", age=54, gender="Male"),
-            Patient(id="2", name="Jane Smith", age=42, gender="Female"),
-            Patient(id="3", name="Maria Garcia", age=37, gender="Female"),
-        ]
-        
-        return DashboardResponse(patients=patients, recent_cases=stored_cases)
-        
+        # Fetch patient data from patient_data service
+        PATIENT_DATA_URL = os.getenv("PATIENT_DATA_SERVICE_URL", "http://patient_data:8001")
+
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                # Get list of patient subject IDs from FHIR
+                response = await client.get(f"{PATIENT_DATA_URL}/api/patients/subject_ids")
+                response.raise_for_status()
+                subject_ids_data = response.json()
+                subject_ids = subject_ids_data.get("subject_ids", [])
+
+                # Fetch all patients (no limit)
+                print(f"Fetching {len(subject_ids)} patients from FHIR in parallel...")
+
+                # Helper function to extract patient data
+                async def fetch_patient(subject_id: str):
+                    try:
+                        patient_response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{subject_id}", timeout=10.0)
+                        patient_response.raise_for_status()
+                        patient_raw = patient_response.json()
+
+                        # Extract patient info from raw FHIR data
+                        patient_id = patient_raw.get("identifier", [{}])[0].get("value", subject_id)
+                        patient_name = patient_raw.get("name", [{}])[0].get("family", f"Patient_{patient_id}")
+
+                        # Extract race and ethnicity from extensions
+                        extensions = patient_raw.get("extension", [])
+                        race = None
+                        ethnicity = None
+                        if len(extensions) > 0:
+                            race_exts = extensions[0].get("extension", [])
+                            race = next((e.get("valueCoding", {}).get("display") for e in race_exts if e.get("url") == "ombCategory"), None)
+                        if len(extensions) > 1:
+                            eth_exts = extensions[1].get("extension", [])
+                            ethnicity = next((e.get("valueCoding", {}).get("display") for e in eth_exts if e.get("url") == "ombCategory"), None)
+
+                        # Extract managing organization
+                        org_ref = patient_raw.get("managingOrganization", {}).get("reference", "")
+
+                        # Create a case entry from patient data
+                        return RecentCase(
+                            id=patient_id,
+                            patient_name=patient_name,
+                            file_name="FHIR_Data.json",  # Placeholder for FHIR data
+                            uploaded_at=datetime.now().strftime("%Y-%m-%d"),
+                            files=[],
+                            fhirId=subject_id,
+                            birthDate=patient_raw.get("birthDate"),
+                            gender=patient_raw.get("gender"),
+                            race=race,
+                            ethnicity=ethnicity,
+                            maritalStatus=patient_raw.get("maritalStatus", {}).get("coding", [{}])[0].get("code"),
+                            managingOrganization=org_ref.split("/")[-1] if org_ref else None,
+                            language=patient_raw.get("communication", [{}])[0].get("language", {}).get("coding", [{}])[0].get("code")
+                        )
+                    except Exception as e:
+                        print(f"✗ Error fetching patient {subject_id}: {type(e).__name__}")
+                        return None
+
+                # Fetch all patients in parallel using asyncio.gather
+                import asyncio
+                tasks = [fetch_patient(subject_id) for subject_id in subject_ids]
+                results = await asyncio.gather(*tasks)
+
+                # Filter out None results (failed requests)
+                recent_cases = [case for case in results if case is not None]
+
+                patients = []
+
+                print(f"Successfully loaded {len(recent_cases)} patients from FHIR")
+                if len(recent_cases) == 0:
+                    print("No patients loaded, falling back to stored_cases")
+                    return DashboardResponse(patients=[], recent_cases=stored_cases)
+
+                return DashboardResponse(patients=patients, recent_cases=recent_cases)
+
+            except httpx.HTTPError as e:
+                print(f"Error connecting to patient_data service: {e}")
+                # Fallback to stored_cases if service is unavailable
+                return DashboardResponse(patients=[], recent_cases=stored_cases)
+
     except Exception as e:
+        print(f"Internal server error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.post("/patients", response_model=CreatePatientResponse)

@@ -246,4 +246,6 @@ local/
 *.ppt
 
 # Specific files to ignore
-Patient Data Service Resources/ 
+Patient Data Service Resources/
+check_fhir.py 
+verify_auth.py
