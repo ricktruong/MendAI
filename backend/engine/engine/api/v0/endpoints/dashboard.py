@@ -549,6 +549,34 @@ class DeleteFileResponse(BaseModel):
     success: bool
     message: str
 
+@router.get("/patients/{fhir_id}/normalized")
+async def get_patient_normalized_data(fhir_id: str):
+    """
+    Get normalized patient data including encounters, observations, medications, etc.
+    Proxies the request to the patient_data service.
+
+    Args:
+        fhir_id: The FHIR subject ID of the patient
+
+    Returns:
+        dict: Normalized patient data
+    """
+    import httpx
+
+    try:
+        PATIENT_DATA_URL = os.getenv("PATIENT_DATA_SERVICE_URL", "http://patient_data:8001")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{fhir_id}/normalized")
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        print(f"Error fetching normalized patient data: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch patient data: {str(e)}")
+    except Exception as e:
+        print(f"Internal server error: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 @router.delete("/patients/{case_id}/files/{file_id}", response_model=DeleteFileResponse)
 async def delete_patient_file(case_id: str, file_id: str) -> DeleteFileResponse:
     """
