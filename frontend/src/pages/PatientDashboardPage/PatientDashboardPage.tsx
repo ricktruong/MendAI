@@ -43,6 +43,9 @@ const PatientDashboardPage: React.FC = () => {
   const [patientFiles, setPatientFiles] = useState<any[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playSpeed, setPlaySpeed] = useState(100); // milliseconds per frame
+  const [jumpToSlice, setJumpToSlice] = useState('');
 
   // AI Analysis state
   const [aiResults, setAiResults] = useState<any[]>([]);
@@ -302,6 +305,51 @@ const PatientDashboardPage: React.FC = () => {
       setCurrentImageIndex(newIndex);
     }
   };
+
+  // Jump to specific slice
+  const handleJumpToSlice = () => {
+    const sliceNum = parseInt(jumpToSlice);
+    if (!isNaN(sliceNum) && sliceNum >= 1 && sliceNum <= ctImages.length) {
+      setCurrentImageIndex(sliceNum - 1);
+      setJumpToSlice('');
+    }
+  };
+
+  // Toggle auto-play
+  const togglePlay = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  // Auto-play effect
+  React.useEffect(() => {
+    if (isPlaying && ctImages.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % ctImages.length);
+      }, playSpeed);
+      return () => clearInterval(interval);
+    }
+  }, [isPlaying, ctImages.length, playSpeed]);
+
+  // Keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (activeTab === 'ct-analysis' && ctImages.length > 0) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handlePrevImage();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleNextImage();
+        } else if (e.key === ' ') {
+          e.preventDefault();
+          togglePlay();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, ctImages.length, currentImageIndex]);
 
   // AI Analysis function
   const triggerAiAnalysis = async () => {
@@ -1060,16 +1108,24 @@ const PatientDashboardPage: React.FC = () => {
                       onClick={() => setPreviewModalOpen(true)}
                     />
                     <div className="ct-controls">
-                      {/* Slice navigation */}
+                      {/* Slice navigation buttons */}
                       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
                         <button
                           onClick={handlePrevImage}
                           className="nav-btn"
                           disabled={ctImages.length <= 1}
                         >
-                          ◀ Previous Slice
+                          ◀ Previous
                         </button>
-                        <span className="slice-info" style={{ flex: 1, textAlign: 'center' }}>
+                        <button
+                          onClick={togglePlay}
+                          className="nav-btn"
+                          disabled={ctImages.length <= 1}
+                          style={{ minWidth: '80px' }}
+                        >
+                          {isPlaying ? '⏸ Pause' : '▶ Play'}
+                        </button>
+                        <span className="slice-info" style={{ flex: 1, textAlign: 'center', fontWeight: 'bold' }}>
                           Slice {currentImageIndex + 1} of {ctImages.length}
                         </span>
                         <button
@@ -1077,8 +1133,63 @@ const PatientDashboardPage: React.FC = () => {
                           className="nav-btn"
                           disabled={ctImages.length <= 1}
                         >
-                          Next Slice ▶
+                          Next ▶
                         </button>
+                      </div>
+
+                      {/* Slider for quick navigation */}
+                      <div style={{ marginBottom: '10px' }}>
+                        <input
+                          type="range"
+                          min="0"
+                          max={ctImages.length - 1}
+                          value={currentImageIndex}
+                          onChange={(e) => setCurrentImageIndex(parseInt(e.target.value))}
+                          style={{ width: '100%', cursor: 'pointer' }}
+                          disabled={ctImages.length <= 1}
+                        />
+                      </div>
+
+                      {/* Jump to slice and speed controls */}
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px', fontSize: '0.875rem' }}>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                          <label>Jump to:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max={ctImages.length}
+                            value={jumpToSlice}
+                            onChange={(e) => setJumpToSlice(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleJumpToSlice()}
+                            placeholder="#"
+                            style={{ width: '60px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
+                          />
+                          <button
+                            onClick={handleJumpToSlice}
+                            className="nav-btn"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                          >
+                            Go
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center', marginLeft: 'auto' }}>
+                          <label>Speed:</label>
+                          <select
+                            value={playSpeed}
+                            onChange={(e) => setPlaySpeed(parseInt(e.target.value))}
+                            style={{ padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}
+                          >
+                            <option value="50">Fast (20 fps)</option>
+                            <option value="100">Normal (10 fps)</option>
+                            <option value="200">Slow (5 fps)</option>
+                            <option value="500">Very Slow (2 fps)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Keyboard shortcuts hint */}
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center', marginBottom: '10px' }}>
+                        ⌨️ Keyboard: ← → to navigate, Space to play/pause
                       </div>
 
                       {/* File navigation (if multiple files) */}
