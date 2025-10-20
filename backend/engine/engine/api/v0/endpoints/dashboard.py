@@ -4,6 +4,7 @@ from typing import List, Optional
 import os
 from pathlib import Path
 from engine.utils.dicom_processor import dicom_processor
+from engine.utils.nii_processor import nii_processor
 
 router = APIRouter()
 
@@ -71,9 +72,9 @@ stored_cases = [
     RecentCase(
         id="14889227",
         patient_name="Sarah Johnson",
-        file_name="CT_Head_001.dcm",
+        file_name="CT_Head_001.nii",
         uploaded_at="2025-09-28",
-        files=[PatientFile(id="file-001-1", file_name="CT_Head_001.dcm", uploaded_at="2025-09-28", file_path=None)],
+        files=[PatientFile(id="file-001-1", file_name="CT_Head_001.nii", uploaded_at="2025-09-28", file_path=None)],
         fhirId="07962bbc-98bf-5586-9988-603d6414295c",
         birthDate="1978-01-16",
         gender="female",
@@ -86,9 +87,9 @@ stored_cases = [
     RecentCase(
         id="14889228",
         patient_name="Michael Chen",
-        file_name="CT_Chest_045.dcm",
+        file_name="CT_Chest_045.nii.gz",
         uploaded_at="2025-09-27",
-        files=[PatientFile(id="file-002-1", file_name="CT_Chest_045.dcm", uploaded_at="2025-09-27", file_path=None)],
+        files=[PatientFile(id="file-002-1", file_name="CT_Chest_045.nii.gz", uploaded_at="2025-09-27", file_path=None)],
         fhirId="a1b2c3d4-5678-9abc-def0-123456789abc",
         birthDate="1965-05-22",
         gender="male",
@@ -101,9 +102,9 @@ stored_cases = [
     RecentCase(
         id="14889229",
         patient_name="Maria Garcia",
-        file_name="CT_Abdomen_102.dcm",
+        file_name="CT_Abdomen_102.nii",
         uploaded_at="2025-09-26",
-        files=[PatientFile(id="file-003-1", file_name="CT_Abdomen_102.dcm", uploaded_at="2025-09-26", file_path=None)],
+        files=[PatientFile(id="file-003-1", file_name="CT_Abdomen_102.nii", uploaded_at="2025-09-26", file_path=None)],
         fhirId="b2c3d4e5-6789-0abc-def1-234567890bcd",
         birthDate="1992-11-03",
         gender="female",
@@ -116,9 +117,9 @@ stored_cases = [
     RecentCase(
         id="14889230",
         patient_name="James Williams",
-        file_name="CT_Brain_Trauma_003.dcm",
+        file_name="CT_Brain_Trauma_003.nii",
         uploaded_at="2025-09-25",
-        files=[PatientFile(id="file-004-1", file_name="CT_Brain_Trauma_003.dcm", uploaded_at="2025-09-25", file_path=None)],
+        files=[PatientFile(id="file-004-1", file_name="CT_Brain_Trauma_003.nii", uploaded_at="2025-09-25", file_path=None)],
         fhirId="c3d4e5f6-7890-1bcd-ef12-34567890cdef",
         birthDate="1955-07-14",
         gender="male",
@@ -131,9 +132,9 @@ stored_cases = [
     RecentCase(
         id="14889231",
         patient_name="Emily Rodriguez",
-        file_name="CT_Spine_067.dcm",
+        file_name="CT_Spine_067.nii",
         uploaded_at="2025-09-24",
-        files=[PatientFile(id="file-005-1", file_name="CT_Spine_067.dcm", uploaded_at="2025-09-24", file_path=None)],
+        files=[PatientFile(id="file-005-1", file_name="CT_Spine_067.nii", uploaded_at="2025-09-24", file_path=None)],
         fhirId="d4e5f6g7-8901-2cde-f123-4567890defgh",
         birthDate="1980-03-28",
         gender="female",
@@ -146,9 +147,9 @@ stored_cases = [
     RecentCase(
         id="14889232",
         patient_name="David Kim",
-        file_name="CT_Thorax_089.dcm",
+        file_name="CT_Thorax_089.nii",
         uploaded_at="2025-09-23",
-        files=[PatientFile(id="file-006-1", file_name="CT_Thorax_089.dcm", uploaded_at="2025-09-23", file_path=None)],
+        files=[PatientFile(id="file-006-1", file_name="CT_Thorax_089.nii", uploaded_at="2025-09-23", file_path=None)],
         fhirId="e5f6g7h8-9012-3def-1234-567890efghij",
         birthDate="1970-12-10",
         gender="male",
@@ -161,9 +162,9 @@ stored_cases = [
     RecentCase(
         id="14889233",
         patient_name="Jennifer Washington",
-        file_name="CT_Pelvis_045.dcm",
+        file_name="CT_Pelvis_045.nii",
         uploaded_at="2025-09-22",
-        files=[PatientFile(id="file-007-1", file_name="CT_Pelvis_045.dcm", uploaded_at="2025-09-22", file_path=None)],
+        files=[PatientFile(id="file-007-1", file_name="CT_Pelvis_045.nii", uploaded_at="2025-09-22", file_path=None)],
         fhirId="f6g7h8i9-0123-4efg-2345-67890fghijk1",
         birthDate="1988-08-19",
         gender="female",
@@ -176,9 +177,9 @@ stored_cases = [
     RecentCase(
         id="14889234",
         patient_name="Robert Patel",
-        file_name="CT_Neck_034.dcm",
+        file_name="CT_Neck_034.nii",
         uploaded_at="2025-09-21",
-        files=[PatientFile(id="file-008-1", file_name="CT_Neck_034.dcm", uploaded_at="2025-09-21", file_path=None)],
+        files=[PatientFile(id="file-008-1", file_name="CT_Neck_034.nii", uploaded_at="2025-09-21", file_path=None)],
         fhirId="g7h8i9j0-1234-5fgh-3456-7890ghijkl12",
         birthDate="1963-04-07",
         gender="male",
@@ -191,9 +192,9 @@ stored_cases = [
     RecentCase(
         id="14889235",
         patient_name="Linda Martinez",
-        file_name="CT_Sinus_012.dcm",
+        file_name="CT_Sinus_012.nii",
         uploaded_at="2025-09-20",
-        files=[PatientFile(id="file-009-1", file_name="CT_Sinus_012.dcm", uploaded_at="2025-09-20", file_path=None)],
+        files=[PatientFile(id="file-009-1", file_name="CT_Sinus_012.nii", uploaded_at="2025-09-20", file_path=None)],
         fhirId="h8i9j0k1-2345-6ghi-4567-890hijklm123",
         birthDate="1975-09-15",
         gender="female",
@@ -206,9 +207,9 @@ stored_cases = [
     RecentCase(
         id="14889236",
         patient_name="Thomas Anderson",
-        file_name="CT_Cardiac_078.dcm",
+        file_name="CT_Cardiac_078.nii",
         uploaded_at="2025-09-19",
-        files=[PatientFile(id="file-010-1", file_name="CT_Cardiac_078.dcm", uploaded_at="2025-09-19", file_path=None)],
+        files=[PatientFile(id="file-010-1", file_name="CT_Cardiac_078.nii", uploaded_at="2025-09-19", file_path=None)],
         fhirId="i9j0k1l2-3456-7hij-5678-90ijklmn1234",
         birthDate="1982-06-25",
         gender="male",
@@ -348,12 +349,16 @@ async def create_patient(
         new_id = f"ct-{str(len(stored_cases) + 1).zfill(3)}"
 
         # Save uploaded file to disk
-        file_name = file.filename or f"uploaded_file_{new_id}.dcm"
+        file_name = file.filename or f"uploaded_file_{new_id}.nii"
+
+        # Validate file extension
+        if not (file_name.lower().endswith('.nii') or file_name.lower().endswith('.nii.gz')):
+            raise HTTPException(status_code=400, detail="Only .nii or .nii.gz files are supported")
 
         # Read file content and save to disk
         file_content = await file.read()
-        saved_file_path = dicom_processor.save_uploaded_file(file_content, file_name)
-        print(f"Saved uploaded file: {saved_file_path}")
+        saved_file_path = nii_processor.save_uploaded_file(file_content, file_name)
+        print(f"Saved uploaded NIfTI file: {saved_file_path}")
 
         # Generate file ID
         file_id = f"file-{new_id}-1"
@@ -409,18 +414,28 @@ async def update_patient(
             if case.id == case_id:
                 case_index = i
                 break
-        
-        if case_index is None:
-            raise HTTPException(status_code=404, detail="Patient not found")
-        
+
         # Validate input
         if not patient_name.strip():
             raise HTTPException(status_code=400, detail="Patient name is required")
-        
-        # Update case data
-        updated_case = stored_cases[case_index]
-        updated_case.patient_name = patient_name
-        updated_case.uploaded_at = uploaded_at
+
+        # If case not found in stored_cases (e.g., FHIR patient), create new entry
+        if case_index is None:
+            print(f"Patient {case_id} not found in stored_cases, creating new entry")
+            updated_case = RecentCase(
+                id=case_id,
+                patient_name=patient_name,
+                file_name="",
+                uploaded_at=uploaded_at,
+                files=[]
+            )
+            stored_cases.append(updated_case)
+            case_index = len(stored_cases) - 1
+        else:
+            # Update existing case data
+            updated_case = stored_cases[case_index]
+            updated_case.patient_name = patient_name
+            updated_case.uploaded_at = uploaded_at
         
         # Handle file operations
         if delete_file and delete_file.lower() == 'true':
@@ -437,10 +452,14 @@ async def update_patient(
                     updated_case.file_name = ""
         elif file and file.filename:
             # Add new file to the patient's file list (preserve existing files)
+            # Validate file extension
+            if not (file.filename.lower().endswith('.nii') or file.filename.lower().endswith('.nii.gz')):
+                raise HTTPException(status_code=400, detail="Only .nii or .nii.gz files are supported")
+
             # Save uploaded file to disk
             file_content = await file.read()
-            saved_file_path = dicom_processor.save_uploaded_file(file_content, file.filename)
-            print(f"Saved updated file: {saved_file_path}")
+            saved_file_path = nii_processor.save_uploaded_file(file_content, file.filename)
+            print(f"Saved updated NIfTI file: {saved_file_path}")
 
             # Generate new file ID
             existing_file_count = len(updated_case.files) if updated_case.files else 0
@@ -531,8 +550,14 @@ async def get_patient_files(case_id: str) -> PatientFilesResponse:
                 case_found = case
                 break
 
+        # If patient not found in stored_cases (FHIR patient with no files yet), return empty list
         if not case_found:
-            raise HTTPException(status_code=404, detail="Patient not found")
+            print(f"Patient {case_id} not found in stored_cases, returning empty file list")
+            return PatientFilesResponse(
+                success=True,
+                files=[],
+                message=f"No files found for patient {case_id}"
+            )
 
         return PatientFilesResponse(
             success=True,
@@ -657,42 +682,50 @@ async def get_patient_images(case_id: str) -> PatientImagesResponse:
                 case_found = case
                 break
 
+        # If patient not found in stored_cases (FHIR patient with no files yet), return placeholder
         if not case_found:
-            raise HTTPException(status_code=404, detail="Patient not found")
+            print(f"Patient {case_id} not found in stored_cases, returning no files message")
+            return PatientImagesResponse(
+                success=True,
+                images=[
+                    f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23fef2f2'/><circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/><text x='200' y='190' font-family='Arial' font-size='14' fill='%23dc2626' text-anchor='middle'>No Files Uploaded</text><text x='200' y='210' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>Upload .nii files to view</text></svg>"
+                ],
+                message="No files uploaded for this patient yet"
+            )
 
-        # Filter to only DICOM files
-        dicom_files = [f for f in case_found.files if f.file_name.lower().endswith('.dcm')]
+        # Filter to only NIfTI files
+        nii_files = [f for f in case_found.files if f.file_name.lower().endswith('.nii') or f.file_name.lower().endswith('.nii.gz')]
 
-        if not dicom_files:
-            # No DICOM files, return placeholder
+        if not nii_files:
+            # No NIfTI files, return placeholder
             sample_images = [
-                f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23fef2f2'/><circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/><text x='200' y='190' font-family='Arial' font-size='14' fill='%23dc2626' text-anchor='middle'>No DICOM Files</text><text x='200' y='210' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>Upload .dcm files</text></svg>"
+                f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23fef2f2'/><circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/><text x='200' y='190' font-family='Arial' font-size='14' fill='%23dc2626' text-anchor='middle'>No NIfTI Files</text><text x='200' y='210' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>Upload .nii files</text></svg>"
             ]
         else:
-            # Convert DICOM files to actual viewable images
+            # Convert NIfTI files to actual viewable images (all slices)
             sample_images = []
-            for i, dicom_file in enumerate(dicom_files):
-                if dicom_file.file_path and os.path.exists(dicom_file.file_path):
-                    # Try to convert actual DICOM file
-                    print(f"Converting DICOM file: {dicom_file.file_path}")
-                    converted_image = dicom_processor.convert_dicom_to_base64(dicom_file.file_path)
+            for i, nii_file in enumerate(nii_files):
+                if nii_file.file_path and os.path.exists(nii_file.file_path):
+                    # Try to convert actual NIfTI file to multiple slices
+                    print(f"Converting NIfTI file: {nii_file.file_path}")
+                    converted_slices = nii_processor.convert_nii_to_base64_slices(nii_file.file_path, axis=2)
 
-                    if converted_image:
-                        print(f"Successfully converted {dicom_file.file_name}")
-                        sample_images.append(converted_image)
+                    if converted_slices and len(converted_slices) > 0:
+                        print(f"Successfully converted {nii_file.file_name} to {len(converted_slices)} slices")
+                        sample_images.extend(converted_slices)  # Add all slices from this NIfTI file
                     else:
-                        print(f"Failed to convert {dicom_file.file_name}, using placeholder")
+                        print(f"Failed to convert {nii_file.file_name}, using placeholder")
                         # Fallback to placeholder if conversion fails
                         placeholder_svg = f"""data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'>
                             <rect width='400' height='400' fill='%23fef2f2'/>
                             <circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/>
-                            <text x='200' y='180' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>DICOM Conversion Failed</text>
-                            <text x='200' y='200' font-family='Arial' font-size='10' fill='%23dc2626' text-anchor='middle'>{dicom_file.file_name}</text>
+                            <text x='200' y='180' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>NIfTI Conversion Failed</text>
+                            <text x='200' y='200' font-family='Arial' font-size='10' fill='%23dc2626' text-anchor='middle'>{nii_file.file_name}</text>
                             <text x='200' y='220' font-family='Arial' font-size='10' fill='%23dc2626' text-anchor='middle'>Check server logs</text>
                         </svg>"""
                         sample_images.append(placeholder_svg)
                 else:
-                    print(f"No file path or file doesn't exist for {dicom_file.file_name}")
+                    print(f"No file path or file doesn't exist for {nii_file.file_name}")
                     # Create a placeholder for files without actual file data (legacy entries)
                     placeholder_svg = f"""data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'>
                         <defs>
@@ -707,10 +740,10 @@ async def get_patient_images(case_id: str) -> PatientImagesResponse:
                         <circle cx='200' cy='200' r='120' fill='none' stroke='%23f9fafb' stroke-width='2' opacity='0.6'/>
                         <circle cx='200' cy='200' r='80' fill='none' stroke='%23f9fafb' stroke-width='1' opacity='0.4'/>
                         <circle cx='200' cy='200' r='40' fill='none' stroke='%23f9fafb' stroke-width='1' opacity='0.3'/>
-                        <text x='200' y='50' font-family='monospace' font-size='12' fill='%23f9fafb' text-anchor='middle'>{dicom_file.file_name}</text>
+                        <text x='200' y='50' font-family='monospace' font-size='12' fill='%23f9fafb' text-anchor='middle'>{nii_file.file_name}</text>
                         <text x='200' y='70' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>Legacy File - No Data</text>
-                        <text x='200' y='370' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>Uploaded: {dicom_file.uploaded_at}</text>
-                        <text x='200' y='385' font-family='monospace' font-size='8' fill='%23a1a1aa' text-anchor='middle'>File ID: {dicom_file.id}</text>
+                        <text x='200' y='370' font-family='monospace' font-size='10' fill='%23d1d5db' text-anchor='middle'>Uploaded: {nii_file.uploaded_at}</text>
+                        <text x='200' y='385' font-family='monospace' font-size='8' fill='%23a1a1aa' text-anchor='middle'>File ID: {nii_file.id}</text>
                     </svg>"""
                     sample_images.append(placeholder_svg)
         

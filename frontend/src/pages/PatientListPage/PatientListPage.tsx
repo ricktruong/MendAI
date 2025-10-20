@@ -115,7 +115,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'M',
           managingOrganization: 'Beth Israel Deaconess Medical Center',
-          fileName: 'CT_Head_001.dcm',
+          fileName: 'CT_Head_001.nii',
           uploadedAt: '2025-09-28',
           language: 'en',
           deceasedDateTime: null
@@ -130,7 +130,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'M',
           managingOrganization: 'Massachusetts General Hospital',
-          fileName: 'CT_Chest_045.dcm',
+          fileName: 'CT_Chest_045.nii',
           uploadedAt: '2025-09-27',
           language: 'en',
           deceasedDateTime: null
@@ -145,7 +145,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Hispanic or Latino',
           maritalStatus: 'S',
           managingOrganization: 'Boston Medical Center',
-          fileName: 'CT_Abdomen_102.dcm',
+          fileName: 'CT_Abdomen_102.nii',
           uploadedAt: '2025-09-26',
           language: 'es',
           deceasedDateTime: null
@@ -160,7 +160,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'W',
           managingOrganization: 'Brigham and Women\'s Hospital',
-          fileName: 'CT_Brain_Trauma_003.dcm',
+          fileName: 'CT_Brain_Trauma_003.nii',
           uploadedAt: '2025-09-25',
           language: 'en',
           deceasedDateTime: null
@@ -175,7 +175,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Hispanic or Latino',
           maritalStatus: 'D',
           managingOrganization: 'Tufts Medical Center',
-          fileName: 'CT_Spine_067.dcm',
+          fileName: 'CT_Spine_067.nii',
           uploadedAt: '2025-09-24',
           language: 'en',
           deceasedDateTime: null
@@ -190,7 +190,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'M',
           managingOrganization: 'Beth Israel Deaconess Medical Center',
-          fileName: 'CT_Thorax_089.dcm',
+          fileName: 'CT_Thorax_089.nii',
           uploadedAt: '2025-09-23',
           language: 'ko',
           deceasedDateTime: null
@@ -205,7 +205,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'S',
           managingOrganization: 'Boston Children\'s Hospital',
-          fileName: 'CT_Pelvis_045.dcm',
+          fileName: 'CT_Pelvis_045.nii',
           uploadedAt: '2025-09-22',
           language: 'en',
           deceasedDateTime: null
@@ -220,7 +220,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'M',
           managingOrganization: 'Massachusetts General Hospital',
-          fileName: 'CT_Neck_034.dcm',
+          fileName: 'CT_Neck_034.nii',
           uploadedAt: '2025-09-21',
           language: 'hi',
           deceasedDateTime: null
@@ -235,7 +235,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Hispanic or Latino',
           maritalStatus: 'M',
           managingOrganization: 'Lahey Hospital & Medical Center',
-          fileName: 'CT_Sinus_012.dcm',
+          fileName: 'CT_Sinus_012.nii',
           uploadedAt: '2025-09-20',
           language: 'es',
           deceasedDateTime: null
@@ -250,7 +250,7 @@ const PatientListPage: React.FC = () => {
           ethnicity: 'Not Hispanic or Latino',
           maritalStatus: 'S',
           managingOrganization: 'Beth Israel Deaconess Medical Center',
-          fileName: 'CT_Cardiac_078.dcm',
+          fileName: 'CT_Cardiac_078.nii',
           uploadedAt: '2025-09-19',
           language: 'en',
           deceasedDateTime: null
@@ -1046,7 +1046,7 @@ const PatientListPage: React.FC = () => {
                     type="file"
                     id="file"
                     onChange={handleFileSelect}
-                    accept=".dcm"
+                    accept=".nii,.nii.gz"
                     style={{ display: 'none' }}
                   />
                   <button
@@ -1057,7 +1057,7 @@ const PatientListPage: React.FC = () => {
                     {selectedFile ? selectedFile.name : 'Select File'}
                   </button>
                   <p className="file-hint">
-                    Only DICOM (.dcm) files are supported for CT analysis
+                    Only NIfTI (.nii or .nii.gz) files are supported for CT analysis
                   </p>
                 </div>
               </div>
@@ -1327,7 +1327,7 @@ const PatientListPage: React.FC = () => {
                       type="file"
                       id="editFile"
                       onChange={handleFileSelect}
-                      accept=".dcm"
+                      accept=".nii,.nii.gz"
                       style={{ display: 'none' }}
                     />
                     <button
@@ -1364,7 +1364,7 @@ const PatientListPage: React.FC = () => {
                       </button>
                     )}
                     <p className="file-hint" style={{ margin: '8px 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                      Only DICOM (.dcm) files are supported for CT analysis. New files will be added to existing files.
+                      Only NIfTI (.nii or .nii.gz) files are supported for CT analysis. New files will be added to existing files.
                     </p>
                   </div>
                 </div>

@@ -129,14 +129,15 @@ const PatientDashboardPage: React.FC = () => {
 
         if (filesResponse.success && filesResponse.files && filesResponse.files.length > 0) {
           console.log('Loaded files for patient:', filesResponse.files);
-          const dcmFiles = filesResponse.files.filter(file =>
-            file.file_name.toLowerCase().endsWith('.dcm')
+          const niiFiles = filesResponse.files.filter(file =>
+            file.file_name.toLowerCase().endsWith('.nii') ||
+            file.file_name.toLowerCase().endsWith('.nii.gz')
           );
-          console.log('Filtered DICOM files:', dcmFiles);
-          console.log('Number of DICOM files found:', dcmFiles.length);
-          setPatientFiles(dcmFiles);
+          console.log('Filtered NIfTI files:', niiFiles);
+          console.log('Number of NIfTI files found:', niiFiles.length);
+          setPatientFiles(niiFiles);
 
-          if (dcmFiles.length > 0) {
+          if (niiFiles.length > 0) {
             // Fetch actual CT images from the backend
             try {
               const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`;
@@ -270,12 +271,12 @@ const PatientDashboardPage: React.FC = () => {
     }
   };
 
-  // File navigation
+  // File navigation (between different NIfTI files)
   const handlePrevFile = () => {
     if (patientFiles.length > 0) {
       const newIndex = (currentFileIndex - 1 + patientFiles.length) % patientFiles.length;
       setCurrentFileIndex(newIndex);
-      setCurrentImageIndex(newIndex);
+      setCurrentImageIndex(0); // Reset to first slice of new file
     }
   };
 
@@ -283,17 +284,23 @@ const PatientDashboardPage: React.FC = () => {
     if (patientFiles.length > 0) {
       const newIndex = (currentFileIndex + 1) % patientFiles.length;
       setCurrentFileIndex(newIndex);
+      setCurrentImageIndex(0); // Reset to first slice of new file
+    }
+  };
+
+  // Image/Slice navigation (between slices within the current image set)
+  const handlePrevImage = () => {
+    if (ctImages.length > 0) {
+      const newIndex = (currentImageIndex - 1 + ctImages.length) % ctImages.length;
       setCurrentImageIndex(newIndex);
     }
   };
 
-  // Legacy image navigation (for backward compatibility)
-  const handlePrevImage = () => {
-    handlePrevFile();
-  };
-
   const handleNextImage = () => {
-    handleNextFile();
+    if (ctImages.length > 0) {
+      const newIndex = (currentImageIndex + 1) % ctImages.length;
+      setCurrentImageIndex(newIndex);
+    }
   };
 
   // AI Analysis function
@@ -1053,26 +1060,49 @@ const PatientDashboardPage: React.FC = () => {
                       onClick={() => setPreviewModalOpen(true)}
                     />
                     <div className="ct-controls">
-                      <button
-                        onClick={handlePrevFile}
-                        className="nav-btn"
-                        disabled={patientFiles.length <= 1}
-                      >
-                        ◀ Previous File
-                      </button>
-                      <span className="slice-info">
-                        {patientFiles.length > 0
-                          ? `File ${currentFileIndex + 1} of ${patientFiles.length}: ${patientFiles[currentFileIndex]?.file_name || 'Loading...'}`
-                          : `Image ${currentImageIndex + 1} of ${ctImages.length}`
-                        }
-                      </span>
-                      <button
-                        onClick={handleNextFile}
-                        className="nav-btn"
-                        disabled={patientFiles.length <= 1}
-                      >
-                        Next File ▶
-                      </button>
+                      {/* Slice navigation */}
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                        <button
+                          onClick={handlePrevImage}
+                          className="nav-btn"
+                          disabled={ctImages.length <= 1}
+                        >
+                          ◀ Previous Slice
+                        </button>
+                        <span className="slice-info" style={{ flex: 1, textAlign: 'center' }}>
+                          Slice {currentImageIndex + 1} of {ctImages.length}
+                        </span>
+                        <button
+                          onClick={handleNextImage}
+                          className="nav-btn"
+                          disabled={ctImages.length <= 1}
+                        >
+                          Next Slice ▶
+                        </button>
+                      </div>
+
+                      {/* File navigation (if multiple files) */}
+                      {patientFiles.length > 1 && (
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', borderTop: '1px solid #e5e7eb', paddingTop: '10px' }}>
+                          <button
+                            onClick={handlePrevFile}
+                            className="nav-btn"
+                            disabled={patientFiles.length <= 1}
+                          >
+                            ◀ Previous File
+                          </button>
+                          <span className="slice-info" style={{ flex: 1, textAlign: 'center', fontSize: '0.875rem' }}>
+                            File {currentFileIndex + 1} of {patientFiles.length}: {patientFiles[currentFileIndex]?.file_name || 'Loading...'}
+                          </span>
+                          <button
+                            onClick={handleNextFile}
+                            className="nav-btn"
+                            disabled={patientFiles.length <= 1}
+                          >
+                            Next File ▶
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -1101,7 +1131,7 @@ const PatientDashboardPage: React.FC = () => {
                       </div>
                       <div className="info-item">
                         <span>File Type:</span>
-                        <span>DICOM (.dcm)</span>
+                        <span>NIfTI (.nii)</span>
                       </div>
                     </>
                   ) : (
