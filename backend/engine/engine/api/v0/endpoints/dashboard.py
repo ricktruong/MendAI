@@ -2,11 +2,14 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Optional
 import os
+import json
 from pathlib import Path
-from engine.utils.dicom_processor import dicom_processor
 from engine.utils.nii_processor import nii_processor
 
 router = APIRouter()
+
+# Persistence file path
+PERSISTENCE_FILE = Path("uploaded_files/patient_data.json")
 
 # Response models
 class Patient(BaseModel):
@@ -67,8 +70,46 @@ class DeletePatientResponse(BaseModel):
     success: bool
     message: str
 
+# Persistence functions
+def load_stored_cases():
+    """Load stored cases from JSON file"""
+    if PERSISTENCE_FILE.exists():
+        try:
+            with open(PERSISTENCE_FILE, 'r') as f:
+                data = json.load(f)
+                cases = []
+                for item in data:
+                    # Convert files list
+                    files = [PatientFile(**f) for f in item.get('files', [])]
+                    item['files'] = files
+                    cases.append(RecentCase(**item))
+                print(f"Loaded {len(cases)} cases from {PERSISTENCE_FILE}")
+                return cases
+        except Exception as e:
+            print(f"Error loading cases from file: {e}")
+    return []
+
+def save_stored_cases(cases):
+    """Save stored cases to JSON file"""
+    try:
+        # Ensure directory exists
+        PERSISTENCE_FILE.parent.mkdir(exist_ok=True)
+
+        # Convert to dict for JSON serialization
+        data = []
+        for case in cases:
+            case_dict = case.model_dump()
+            data.append(case_dict)
+
+        with open(PERSISTENCE_FILE, 'w') as f:
+            json.dump(data, f, indent=2)
+        print(f"Saved {len(cases)} cases to {PERSISTENCE_FILE}")
+    except Exception as e:
+        print(f"Error saving cases to file: {e}")
+
 # In-memory storage for demo (in production, this would be a database)
-stored_cases = [
+# Initialize with default cases
+_default_cases = [
     RecentCase(
         id="14889227",
         patient_name="Sarah Johnson",
@@ -221,6 +262,9 @@ stored_cases = [
     ),
 ]
 
+# Load persisted cases or use defaults
+stored_cases = load_stored_cases() or _default_cases
+
 # 2. Patient List Page (formerly Dashboard Page)
 @router.get("/dashboard", response_model=DashboardResponse)
 async def get_patient_list_data() -> DashboardResponse:
@@ -302,6 +346,17 @@ async def get_patient_list_data() -> DashboardResponse:
                 # Filter out None results (failed requests)
                 recent_cases = [case for case in results if case is not None]
 
+                # Merge with stored_cases to include uploaded files
+                # For each FHIR patient, check if there are files in stored_cases
+                for fhir_case in recent_cases:
+                    stored_case = next((sc for sc in stored_cases if sc.id == fhir_case.id), None)
+                    if stored_case and stored_case.files:
+                        # Merge file information from stored_cases
+                        fhir_case.files = stored_case.files
+                        fhir_case.file_name = stored_case.file_name
+                        fhir_case.uploaded_at = stored_case.uploaded_at
+                        print(f"Merged {len(stored_case.files)} files for patient {fhir_case.id}")
+
                 patients = []
 
                 print(f"Successfully loaded {len(recent_cases)} patients from FHIR")
@@ -374,7 +429,10 @@ async def create_patient(
 
         # Add to in-memory storage (in production, save to database)
         stored_cases.append(new_case)
-        
+
+        # Persist to file
+        save_stored_cases(stored_cases)
+
         return CreatePatientResponse(
             success=True,
             case=new_case,
@@ -480,7 +538,10 @@ async def update_patient(
 
             # Update primary file reference to the newest file
             updated_case.file_name = file.filename
-        
+
+        # Persist to file
+        save_stored_cases(stored_cases)
+
         return UpdatePatientResponse(
             success=True,
             case=updated_case,
@@ -514,7 +575,10 @@ async def delete_patient(case_id: str) -> DeletePatientResponse:
         
         if not case_found:
             raise HTTPException(status_code=404, detail="Patient not found")
-        
+
+        # Persist to file
+        save_stored_cases(stored_cases)
+
         return DeletePatientResponse(
             success=True,
             message="Patient deleted successfully"
