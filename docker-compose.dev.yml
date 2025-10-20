@@ -1,0 +1,138 @@
+# Docker Compose for Development Environment
+# Usage: docker-compose -f docker-compose.dev.yml up
+#
+# Benefits:
+# - Volume mapping for hot-reload (no rebuild needed)
+# - Debug mode enabled
+# - Live code changes reflected immediately
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Map source code for hot-reload
+      - ./frontend/src:/app/src:cached
+      - ./frontend/public:/app/public:cached
+      - ./frontend/index.html:/app/index.html:cached
+      - ./frontend/vite.config.ts:/app/vite.config.ts:cached
+      - ./frontend/tsconfig.json:/app/tsconfig.json:cached
+      - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:cached
+      # Don't map node_modules (use container's version)
+    environment:
+      - NODE_ENV=development
+      - VITE_API_BASE_URL=http://localhost:8000
+    command: npm run dev -- --host 0.0.0.0
+    restart: unless-stopped
+    depends_on:
+      - engine
+    networks:
+      - mendai-network
+
+  engine:
+    build:
+      context: ./backend
+      dockerfile: engine/Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Map source code for hot-reload
+      - ./backend/engine/engine:/app/engine:cached
+      - ./backend/common:/app/../common:cached
+      # Persist uploaded files across container restarts
+      - ./backend/engine/uploaded_files:/app/uploaded_files:delegated
+      # Don't map these (use container's version)
+      # - NOT mapping .venv or poetry cache
+    env_file:
+      - ./backend/engine/.env
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - HOST=0.0.0.0
+      - PORT=8000
+      - API_PREFIX=/api/v0
+      - CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - PYTHONUNBUFFERED=1
+    # Enable hot-reload with --reload flag
+    command: poetry run uvicorn engine.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    depends_on:
+      - patient_data
+      - medical_imaging
+      - biomedical_llm
+    networks:
+      - mendai-network
+
+  patient_data:
+    build:
+      context: ./backend
+      dockerfile: patient_data/Dockerfile
+    ports:
+      - "127.0.0.1:8001:8001"
+    volumes:
+      - ./backend/patient_data/patient_data:/app/patient_data:cached
+      - ./backend/common:/app/../common:cached
+    env_file:
+      - ./backend/patient_data/.env
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - HOST=0.0.0.0
+      - PORT=8001
+      - PYTHONUNBUFFERED=1
+    command: poetry run uvicorn patient_data.main:app --host 0.0.0.0 --port 8001 --reload
+    restart: unless-stopped
+    networks:
+      - mendai-network
+
+  medical_imaging:
+    build:
+      context: ./backend
+      dockerfile: medical_imaging/Dockerfile
+    ports:
+      - "127.0.0.1:8002:8002"
+    volumes:
+      - ./backend/medical_imaging/medical_imaging:/app/medical_imaging:cached
+      - ./backend/common:/app/../common:cached
+    env_file:
+      - ./backend/medical_imaging/.env
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - HOST=0.0.0.0
+      - PORT=8002
+      - PYTHONUNBUFFERED=1
+    command: poetry run uvicorn medical_imaging.main:app --host 0.0.0.0 --port 8002 --reload
+    restart: unless-stopped
+    networks:
+      - mendai-network
+
+  biomedical_llm:
+    build:
+      context: ./backend
+      dockerfile: biomedical_llm/Dockerfile
+    ports:
+      - "127.0.0.1:8003:8003"
+    volumes:
+      - ./backend/biomedical_llm/biomedical_llm:/app/biomedical_llm:cached
+      - ./backend/common:/app/../common:cached
+    env_file:
+      - ./backend/biomedical_llm/.env
+    environment:
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - HOST=0.0.0.0
+      - PORT=8003
+      - PYTHONUNBUFFERED=1
+    command: poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003 --reload
+    restart: unless-stopped
+    networks:
+      - mendai-network
+
+networks:
+  mendai-network:
+    driver: bridge
