@@ -1144,98 +1144,241 @@
   transform: none;
 }
 
-/* Modal Styles */
+/* Enhanced Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content.image-modal {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-  background: #000;
-  border-radius: 12px;
+  width: 98vw;
+  height: 92vh;
+  max-width: 1920px;
+  background: #1a1a1a;
+  border-radius: 16px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: modalSlideIn 0.3s ease-out;
 }
 
-.modal-image {
-  max-width: 100%;
-  max-height: 90vh;
-  object-fit: contain;
+@keyframes modalSlideIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Top Control Bar */
+.modal-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  background: rgba(0, 0, 0, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  z-index: 1002;
+}
+
+.modal-title {
+  color: white;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
 }
 
 .modal-close {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  z-index: 1001;
   transition: all 0.2s ease;
+  font-weight: 300;
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(239, 68, 68, 0.8);
+  border-color: rgba(239, 68, 68, 1);
+  transform: scale(1.08);
 }
 
+/* Image Container */
+.modal-image-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #000;
+  position: relative;
+  user-select: none;
+  min-height: 0; /* Important for flex layout */
+  width: 100%;
+}
+
+.modal-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  transform-origin: center center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Navigation Buttons */
 .nav-button {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
+  background: rgba(59, 130, 246, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   color: white;
-  width: 50px;
-  height: 50px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   transition: all 0.2s ease;
+  z-index: 1001;
+  backdrop-filter: blur(10px);
 }
 
-.nav-button:hover {
-  background: rgba(255, 255, 255, 0.3);
+.nav-button:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 1);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-50%) scale(1.15);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5);
+}
+
+.nav-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(100, 116, 139, 0.5);
 }
 
 .nav-button.left {
-  left: 1rem;
+  left: 1.5rem;
 }
 
 .nav-button.right {
-  right: 1rem;
+  right: 1.5rem;
 }
 
-.modal-info {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.7);
+/* Bottom Control Bar */
+.modal-bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 2rem;
+  background: rgba(0, 0, 0, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  z-index: 1002;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem 1.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.zoom-btn {
+  background: rgba(59, 130, 246, 0.85);
+  border: 1px solid rgba(59, 130, 246, 0.4);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 1rem;
-  font-size: 0.875rem;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.zoom-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 1);
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.5);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(100, 116, 139, 0.5);
+}
+
+.zoom-btn.reset {
+  width: auto;
+  padding: 0 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.zoom-level {
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  min-width: 60px;
+  text-align: center;
+  font-family: 'Courier New', monospace;
+}
+
+/* Help Text */
+.modal-help {
+  display: flex;
+  align-items: center;
+}
+
+.help-text {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
 }
 
 /* No Patient Selected */
@@ -1458,40 +1601,90 @@
   .dashboard-header {
     padding: 0.75rem;
   }
-  
+
   .header-left h1 {
     font-size: 1.5rem;
   }
-  
+
   .breadcrumb {
     font-size: 0.8rem;
   }
-  
+
   .header-button {
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
   }
-  
+
   .tab-content {
     padding: 1rem;
   }
-  
+
   .internal-tab-navigation {
     margin: 0;
     padding: 0 0.75rem;
   }
-  
+
   .internal-tab-button {
     padding: 0.625rem 0.875rem;
     font-size: 0.75rem;
   }
-  
+
   .summary-grid {
     gap: 1rem;
   }
-  
+
   .metrics-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
+  }
+
+  /* Modal responsive adjustments */
+  .modal-content.image-modal {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  .nav-button {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+  }
+
+  .nav-button.left {
+    left: 0.5rem;
+  }
+
+  .nav-button.right {
+    right: 0.5rem;
+  }
+
+  .modal-top-bar,
+  .modal-bottom-bar {
+    padding: 0.75rem 1rem;
+  }
+
+  .modal-title {
+    font-size: 0.9rem;
+  }
+
+  .zoom-controls {
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .zoom-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.25rem;
+  }
+
+  .zoom-level {
+    font-size: 0.875rem;
+    min-width: 50px;
+  }
+
+  .help-text {
+    font-size: 0.7rem;
   }
 }

@@ -47,6 +47,12 @@ const PatientDashboardPage: React.FC = () => {
   const [playSpeed, setPlaySpeed] = useState(100); // milliseconds per frame
   const [jumpToSlice, setJumpToSlice] = useState('');
 
+  // Modal zoom and pan state
+  const [modalZoom, setModalZoom] = useState(1);
+  const [modalPan, setModalPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
   // AI Analysis state
   const [aiResults, setAiResults] = useState<any[]>([]);
   const [loadingAiAnalysis, setLoadingAiAnalysis] = useState(false);
@@ -315,6 +321,62 @@ const PatientDashboardPage: React.FC = () => {
     }
   };
 
+  // Modal zoom and pan handlers
+  const handleZoomIn = () => {
+    setModalZoom(prev => Math.min(prev + 0.5, 5));
+  };
+
+  const handleZoomOut = () => {
+    setModalZoom(prev => Math.max(prev - 0.5, 0.5));
+  };
+
+  const handleResetZoom = () => {
+    setModalZoom(1);
+    setModalPan({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (modalZoom > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - modalPan.x, y: e.clientY - modalPan.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && modalZoom > 1) {
+      setModalPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      handleZoomIn();
+    } else {
+      handleZoomOut();
+    }
+  };
+
+  // Reset zoom when modal opens/closes
+  const openModal = () => {
+    setPreviewModalOpen(true);
+    setModalZoom(1);
+    setModalPan({ x: 0, y: 0 });
+  };
+
+  const closeModal = () => {
+    setPreviewModalOpen(false);
+    setModalZoom(1);
+    setModalPan({ x: 0, y: 0 });
+  };
+
   // Toggle auto-play
   const togglePlay = () => {
     setIsPlaying(!isPlaying);
@@ -333,7 +395,30 @@ const PatientDashboardPage: React.FC = () => {
   // Keyboard navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (activeTab === 'ct-analysis' && ctImages.length > 0) {
+      // Modal keyboard controls
+      if (previewModalOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          closeModal();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handlePrevImage();
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleNextImage();
+        } else if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          handleZoomIn();
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          handleZoomOut();
+        } else if (e.key === '0') {
+          e.preventDefault();
+          handleResetZoom();
+        }
+      }
+      // CT analysis tab keyboard controls
+      else if (activeTab === 'ct-analysis' && ctImages.length > 0) {
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
           handlePrevImage();
@@ -349,7 +434,7 @@ const PatientDashboardPage: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, ctImages.length, currentImageIndex]);
+  }, [activeTab, ctImages.length, currentImageIndex, previewModalOpen, modalZoom]);
 
   // AI Analysis function
   const triggerAiAnalysis = async () => {
@@ -967,7 +1052,7 @@ const PatientDashboardPage: React.FC = () => {
                       src={ctImages[currentImageIndex]}
                       alt={`CT Scan ${currentImageIndex + 1}`}
                       className="ct-image"
-                      onClick={() => setPreviewModalOpen(true)}
+                      onClick={openModal}
                     />
                     <div className="ct-controls">
                       {/* Slice navigation buttons */}
@@ -1564,25 +1649,103 @@ const PatientDashboardPage: React.FC = () => {
         </main>
       </div>
 
-      {/* Image Preview Modal */}
+      {/* Enhanced Image Preview Modal */}
       {previewModalOpen && (
-        <div className="modal-overlay" onClick={() => setPreviewModalOpen(false)}>
+        <div className="modal-overlay" onClick={(e) => {
+          if (e.target === e.currentTarget) closeModal();
+        }}>
           <div className="modal-content image-modal">
-            <button 
-              className="modal-close"
-              onClick={() => setPreviewModalOpen(false)}
+            {/* Top Control Bar */}
+            <div className="modal-top-bar">
+              <div className="modal-title">
+                CT Scan Viewer - Slice {currentImageIndex + 1} of {ctImages.length}
+              </div>
+              <button
+                className="modal-close"
+                onClick={closeModal}
+                title="Close (ESC)"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Image Container with Zoom and Pan */}
+            <div
+              className="modal-image-container"
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              style={{ cursor: modalZoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
             >
-              ×
+              <img
+                src={ctImages[currentImageIndex]}
+                alt="Full CT"
+                className="modal-image"
+                style={{
+                  transform: `scale(${modalZoom}) translate(${modalPan.x / modalZoom}px, ${modalPan.y / modalZoom}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                }}
+                draggable={false}
+              />
+            </div>
+
+            {/* Navigation Buttons */}
+            <button
+              onClick={handlePrevImage}
+              className="nav-button left"
+              title="Previous (←)"
+              disabled={ctImages.length <= 1}
+            >
+              ◀
             </button>
-            <button onClick={handlePrevImage} className="nav-button left">◀</button>
-            <img
-              src={ctImages[currentImageIndex]}
-              alt="Full CT"
-              className="modal-image"
-            />
-            <button onClick={handleNextImage} className="nav-button right">▶</button>
-            <div className="modal-info">
-              Slice {currentImageIndex + 1} of {ctImages.length}
+            <button
+              onClick={handleNextImage}
+              className="nav-button right"
+              title="Next (→)"
+              disabled={ctImages.length <= 1}
+            >
+              ▶
+            </button>
+
+            {/* Bottom Control Bar */}
+            <div className="modal-bottom-bar">
+              {/* Zoom Controls */}
+              <div className="zoom-controls">
+                <button
+                  className="zoom-btn"
+                  onClick={handleZoomOut}
+                  title="Zoom Out (-)"
+                  disabled={modalZoom <= 0.5}
+                >
+                  −
+                </button>
+                <span className="zoom-level">{Math.round(modalZoom * 100)}%</span>
+                <button
+                  className="zoom-btn"
+                  onClick={handleZoomIn}
+                  title="Zoom In (+)"
+                  disabled={modalZoom >= 5}
+                >
+                  +
+                </button>
+                <button
+                  className="zoom-btn reset"
+                  onClick={handleResetZoom}
+                  title="Reset Zoom (0)"
+                  disabled={modalZoom === 1 && modalPan.x === 0 && modalPan.y === 0}
+                >
+                  Reset
+                </button>
+              </div>
+
+              {/* Info and Help */}
+              <div className="modal-help">
+                <span className="help-text">
+                  💡 Use mouse wheel to zoom • Drag to pan • Arrow keys to navigate
+                </span>
+              </div>
             </div>
           </div>
         </div>
