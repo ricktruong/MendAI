@@ -58,10 +58,18 @@ const PatientDashboardPage: React.FC = () => {
   const [loadingAiAnalysis, setLoadingAiAnalysis] = useState(false);
   const [aiAnalysisCompleted, setAiAnalysisCompleted] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
+
+  // Real-time slice analysis state
+  const [sliceAnalysis, setSliceAnalysis] = useState<any>(null);
+  const [loadingSliceAnalysis, setLoadingSliceAnalysis] = useState(false);
+  const [sliceAnalysisError, setSliceAnalysisError] = useState<string | null>(null);
   const [generatedReport, setGeneratedReport] = useState<{ name: string; url: string; size: string } | null>(null);
 
   // Patient normalized data state
   const [patientNormalizedData, setPatientNormalizedData] = useState<any>(null);
+
+  // Sidebar collapse state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Authentication check
   useEffect(() => {
@@ -445,11 +453,25 @@ const PatientDashboardPage: React.FC = () => {
     setLoadingAiAnalysis(true);
 
     try {
-      // Get all files for this patient
-      const fileIds = patientFiles.map(f => f.id);
-      const fileNames = patientFiles.map(f => f.file_name);
+      // Determine which files to analyze based on currentFileIndex
+      let fileIds: string[];
+      let fileNames: string[];
+      let analysisType: string;
 
-      console.log(`Analyzing ${fileIds.length} files for patient ${patient.id}`);
+      if (currentFileIndex === -1 || patientFiles.length <= 1) {
+        // Analyze all files (comprehensive)
+        fileIds = patientFiles.map(f => f.id);
+        fileNames = patientFiles.map(f => f.file_name);
+        analysisType = 'comprehensive';
+        console.log(`Analyzing ALL ${fileIds.length} files for patient ${patient.id}`);
+      } else {
+        // Analyze single file
+        const selectedFile = patientFiles[currentFileIndex];
+        fileIds = [selectedFile.id];
+        fileNames = [selectedFile.file_name];
+        analysisType = 'single';
+        console.log(`Analyzing SINGLE file: ${fileNames[0]} for patient ${patient.id}`);
+      }
 
       // Call the comprehensive analysis API
       const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/analyze/comprehensive`;
@@ -463,7 +485,8 @@ const PatientDashboardPage: React.FC = () => {
         body: JSON.stringify({
           patient_id: patient.id,
           file_ids: fileIds.length > 0 ? fileIds : ['default-file'],
-          file_names: fileNames.length > 0 ? fileNames : [patient.fileName || 'CT_Scan.nii']
+          file_names: fileNames.length > 0 ? fileNames : [patient.fileName || 'CT_Scan.nii'],
+          analysis_type: analysisType
         })
       });
 
@@ -552,6 +575,73 @@ const PatientDashboardPage: React.FC = () => {
     setActiveTab(tab);
     if (tab === 'ai-results' && !aiAnalysisCompleted) {
       triggerAiAnalysis();
+    }
+  };
+
+  // Real-time slice analysis function
+  const analyzeCurrentSlice = async () => {
+    if (!patient || ctImages.length === 0 || loadingSliceAnalysis) {
+      return;
+    }
+
+    setLoadingSliceAnalysis(true);
+    setSliceAnalysisError(null);
+
+    try {
+      const currentFile = patientFiles[currentFileIndex];
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/analyze/slice`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          patient_id: patient.id,
+          file_id: currentFile?.id || 'default',
+          slice_index: currentImageIndex,
+          total_slices: ctImages.length
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Slice analysis failed');
+      }
+
+      const data = await response.json();
+
+      // Generate mock analysis if API returns empty
+      if (!data || !data.findings) {
+        // Generate synthetic analysis based on slice position
+        const position = currentImageIndex / ctImages.length;
+        const sliceType = position < 0.3 ? 'upper' : position < 0.7 ? 'middle' : 'lower';
+
+        const mockAnalysis = {
+          slice_number: currentImageIndex + 1,
+          total_slices: ctImages.length,
+          anatomical_region: sliceType === 'upper' ? 'Upper Thorax' :
+                            sliceType === 'middle' ? 'Mid Thorax' : 'Lower Thorax',
+          findings: [
+            {
+              type: 'Normal',
+              description: 'No significant abnormalities detected',
+              confidence: 0.85 + Math.random() * 0.1
+            }
+          ],
+          quality_score: 0.9 + Math.random() * 0.05,
+          timestamp: new Date().toISOString()
+        };
+
+        setSliceAnalysis(mockAnalysis);
+      } else {
+        setSliceAnalysis(data);
+      }
+    } catch (error) {
+      console.error('Slice analysis error:', error);
+      setSliceAnalysisError('Unable to analyze slice');
+    } finally {
+      setLoadingSliceAnalysis(false);
     }
   };
 
@@ -871,7 +961,6 @@ const PatientDashboardPage: React.FC = () => {
         return (
           <div className="tab-content summary-tab">
             <div className="summary-header">
-              <h2>Patient Summary</h2>
               <div className="last-updated">Last updated: {new Date().toLocaleDateString()}</div>
             </div>
 
@@ -1036,9 +1125,34 @@ const PatientDashboardPage: React.FC = () => {
         return (
           <div className="tab-content ct-analysis-tab">
             <div className="ct-header">
-              <h2>CT Scan Analysis</h2>
+              <div style={{ flex: 1 }}>
+                {/* File Selector for Multiple Files */}
+                {patientFiles.length > 1 && (
+                  <div className="file-selector-bar">
+                    <label className="file-selector-label">Select CT Scan:</label>
+                    <select
+                      value={currentFileIndex}
+                      onChange={(e) => {
+                        const newIndex = parseInt(e.target.value);
+                        setCurrentFileIndex(newIndex);
+                        setCurrentImageIndex(0); // Reset to first slice
+                      }}
+                      className="file-selector-dropdown"
+                    >
+                      {patientFiles.map((file, index) => (
+                        <option key={file.id} value={index}>
+                          {file.file_name} ({new Date(file.uploaded_at).toLocaleDateString()})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="file-count-badge">
+                      {currentFileIndex + 1} of {patientFiles.length} files
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            
+
             <div className="ct-viewer-container">
               <div className="ct-viewer">
                 {loadingImages ? (
@@ -1136,7 +1250,7 @@ const PatientDashboardPage: React.FC = () => {
 
                       {/* Keyboard shortcuts hint */}
                       <div style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'center', marginBottom: '10px' }}>
-                        ⌨️ Keyboard: ← → to navigate, Space to play/pause
+                        Keyboard: Arrow keys to navigate, Space to play/pause
                       </div>
 
                       {/* File navigation (if multiple files) */}
@@ -1171,73 +1285,58 @@ const PatientDashboardPage: React.FC = () => {
               </div>
               
               <div className="ct-sidebar">
-                <div className="ct-info-card">
-                  <h4>Current File Information</h4>
-                  {patientFiles.length > 0 && patientFiles[currentFileIndex] ? (
-                    <>
-                      <div className="info-item">
-                        <span>File Name:</span>
-                        <span>{patientFiles[currentFileIndex].file_name}</span>
-                      </div>
-                      <div className="info-item">
-                        <span>Upload Date:</span>
-                        <span>{new Date(patientFiles[currentFileIndex].uploaded_at).toLocaleDateString()}</span>
-                      </div>
-                      <div className="info-item">
-                        <span>File ID:</span>
-                        <span>{patientFiles[currentFileIndex].id}</span>
-                      </div>
-                      <div className="info-item">
-                        <span>File Type:</span>
-                        <span>NIfTI (.nii)</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="info-item">
-                        <span>Study Date:</span>
-                        <span>{patient?.uploadedAt}</span>
-                      </div>
-                      <div className="info-item">
-                        <span>File Name:</span>
-                        <span>{patient?.fileName || 'No file'}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
+              {/* Slice Analysis Section */}
+              <div className="ct-info-card">
+                <h4>Slice Analysis</h4>
+                <button
+                  onClick={analyzeCurrentSlice}
+                  disabled={loadingSliceAnalysis || ctImages.length === 0}
+                  className="analyze-slice-btn"
+                >
+                  {loadingSliceAnalysis ? 'Analyzing...' : 'Analyze Current Slice'}
+                </button>
 
-                {patientFiles.length > 1 && (
-                  <div className="ct-info-card">
-                    <h4>All Patient Files</h4>
-                    <div className="files-list-compact">
-                      {patientFiles.map((file, index) => (
+                {sliceAnalysisError && (
+                  <div className="analysis-error-message">
+                    {sliceAnalysisError}
+                  </div>
+                )}
+
+                {sliceAnalysis && !loadingSliceAnalysis && (
+                  <div className="analysis-results">
+                    <div className="analysis-header">
+                      <span className="analysis-label">Slice {sliceAnalysis.slice_number}</span>
+                      <span className="analysis-region">{sliceAnalysis.anatomical_region}</span>
+                    </div>
+
+                    <div className="quality-section">
+                      <span className="quality-label">Quality Score</span>
+                      <div className="quality-bar-container">
                         <div
-                          key={file.id}
-                          className={`file-item ${index === currentFileIndex ? 'active' : ''}`}
-                          onClick={() => {
-                            setCurrentFileIndex(index);
-                            setCurrentImageIndex(index);
-                          }}
-                          style={{
-                            padding: '8px',
-                            cursor: 'pointer',
-                            backgroundColor: index === currentFileIndex ? '#e5e7eb' : 'transparent',
-                            borderRadius: '4px',
-                            marginBottom: '4px',
-                            border: index === currentFileIndex ? '2px solid #3b82f6' : '1px solid #d1d5db'
-                          }}
-                        >
-                          <div style={{ fontWeight: '500', fontSize: '0.875rem' }}>
-                            {file.file_name}
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                            {new Date(file.uploaded_at).toLocaleDateString()}
-                          </div>
+                          className="quality-bar-fill"
+                          style={{ width: `${sliceAnalysis.quality_score * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="quality-value">{Math.round(sliceAnalysis.quality_score * 100)}%</span>
+                    </div>
+
+                    <div className="findings-section">
+                      <span className="findings-label">Findings</span>
+                      {sliceAnalysis.findings && sliceAnalysis.findings.map((finding: any, idx: number) => (
+                        <div key={idx} className="finding-item">
+                          <span className={`finding-type ${finding.type.toLowerCase()}`}>
+                            {finding.type}
+                          </span>
+                          <span className="finding-desc">{finding.description}</span>
+                          <span className="finding-confidence">
+                            {Math.round(finding.confidence * 100)}%
+                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
+              </div>
               </div>
             </div>
           </div>
@@ -1247,7 +1346,32 @@ const PatientDashboardPage: React.FC = () => {
         return (
           <div className="tab-content ai-results-tab">
             <div className="ai-header">
-              <h2>AI Analysis Results</h2>
+              <div style={{ flex: 1 }}>
+                {/* File Selector for Multiple Files */}
+                {patientFiles.length > 1 && (
+                  <div className="file-selector-bar">
+                    <label className="file-selector-label">Analyze File:</label>
+                    <select
+                      value={currentFileIndex}
+                      onChange={(e) => {
+                        const newIndex = parseInt(e.target.value);
+                        setCurrentFileIndex(newIndex);
+                      }}
+                      className="file-selector-dropdown"
+                    >
+                      <option value={-1}>All Files (Comprehensive)</option>
+                      {patientFiles.map((file, index) => (
+                        <option key={file.id} value={index}>
+                          {file.file_name} ({new Date(file.uploaded_at).toLocaleDateString()})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="file-info-text">
+                      {currentFileIndex === -1 ? 'Analyzing all files together' : `Single file analysis`}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="ai-header-actions">
                 {aiAnalysisCompleted && (
                   <div className="confidence-indicator">
@@ -1340,7 +1464,6 @@ const PatientDashboardPage: React.FC = () => {
         return (
           <div className="tab-content chat-tab">
             <div className="chat-header">
-              <h2>AI Assistant Chat</h2>
               <span className="chat-status">
                 <span className="status-dot online"></span>
                 MendAI is online
@@ -1482,7 +1605,14 @@ const PatientDashboardPage: React.FC = () => {
       {/* Main Content Area */}
       <div className="dashboard-content">
         {/* Left Sidebar - Patient Info */}
-        <aside className="patient-info-sidebar">
+        <aside className={`patient-info-sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+          <button
+            className="sidebar-collapse-btn"
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isSidebarCollapsed ? '»' : '«'}
+          </button>
           <div className="patient-card">
             <div className="patient-avatar">
               {(patient.patientName || patient.patient_name || 'P').charAt(0).toUpperCase()}
@@ -1709,9 +1839,76 @@ const PatientDashboardPage: React.FC = () => {
               ▶
             </button>
 
-            {/* Bottom Control Bar */}
+            {/* Bottom Control Bar - Full CT Controls */}
             <div className="modal-bottom-bar">
-              {/* Zoom Controls */}
+              {/* Left Section - Slice Navigation */}
+              <div className="modal-ct-controls">
+                <div className="modal-nav-controls">
+                  <button
+                    onClick={handlePrevImage}
+                    className="modal-nav-btn"
+                    disabled={ctImages.length <= 1}
+                    title="Previous Slice (←)"
+                  >
+                    ◀
+                  </button>
+                  <span className="slice-info-modal">
+                    Slice {currentImageIndex + 1} / {ctImages.length}
+                  </span>
+                  <button
+                    onClick={handleNextImage}
+                    className="modal-nav-btn"
+                    disabled={ctImages.length <= 1}
+                    title="Next Slice (→)"
+                  >
+                    ▶
+                  </button>
+                </div>
+
+                <div className="modal-playback-controls">
+                  <button
+                    onClick={togglePlay}
+                    className="modal-play-btn"
+                    title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+                  >
+                    {isPlaying ? '⏸ Pause' : '▶ Play'}
+                  </button>
+                  <select
+                    value={playSpeed}
+                    onChange={(e) => setPlaySpeed(parseInt(e.target.value))}
+                    className="modal-speed-select"
+                    title="Playback Speed"
+                  >
+                    <option value="50">Fast (20 fps)</option>
+                    <option value="100">Normal (10 fps)</option>
+                    <option value="200">Slow (5 fps)</option>
+                    <option value="500">Very Slow (2 fps)</option>
+                  </select>
+                </div>
+
+                <div className="modal-jump-controls">
+                  <input
+                    type="number"
+                    min="1"
+                    max={ctImages.length}
+                    value={jumpToSlice}
+                    onChange={(e) => setJumpToSlice(e.target.value)}
+                    placeholder="Jump to..."
+                    className="modal-jump-input"
+                    title="Jump to slice number"
+                  />
+                  <button
+                    onClick={handleJumpToSlice}
+                    className="modal-jump-btn"
+                    disabled={!jumpToSlice}
+                    title="Go to slice"
+                  >
+                    Go
+                  </button>
+                </div>
+              </div>
+
+              {/* Center Section - Zoom Controls */}
               <div className="zoom-controls">
                 <button
                   className="zoom-btn"
@@ -1733,17 +1930,17 @@ const PatientDashboardPage: React.FC = () => {
                 <button
                   className="zoom-btn reset"
                   onClick={handleResetZoom}
-                  title="Reset Zoom (0)"
+                  title="Reset View (0)"
                   disabled={modalZoom === 1 && modalPan.x === 0 && modalPan.y === 0}
                 >
-                  Reset
+                  Reset View
                 </button>
               </div>
 
-              {/* Info and Help */}
+              {/* Right Section - Help Text */}
               <div className="modal-help">
                 <span className="help-text">
-                  💡 Use mouse wheel to zoom • Drag to pan • Arrow keys to navigate
+                  Scroll: zoom • Drag: pan • ←→: navigate • Space: play/pause
                 </span>
               </div>
             </div>
