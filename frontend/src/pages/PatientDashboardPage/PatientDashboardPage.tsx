@@ -625,8 +625,6 @@ const PatientDashboardPage: React.FC = () => {
           { name: 'Observations', value: 0, color: '#f59e0b' },
         ];
 
-        let encounterDetails: any[] = [];
-
         // If no FHIR data available, generate synthetic data based on patient demographics
         if (!patientNormalizedData || !patientNormalizedData.encounters || patientNormalizedData.encounters.length === 0) {
           console.log('Using synthetic data for patient:', patient?.id);
@@ -693,7 +691,6 @@ const PatientDashboardPage: React.FC = () => {
         if (patientNormalizedData && patientNormalizedData.encounters && patientNormalizedData.encounters.length > 0) {
           // Get the most recent encounter
           const latestEncounter = patientNormalizedData.encounters[0];
-          encounterDetails = patientNormalizedData.encounters;
 
           // Extract vital signs from observations
           const observations = latestEncounter.observations || [];
@@ -944,141 +941,6 @@ const PatientDashboardPage: React.FC = () => {
                   <p className="chart-description">
                     Overall patient health metrics assessment
                   </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="summary-grid">
-              <div className="summary-card">
-                <h3>Patient Demographics</h3>
-                <div className="summary-items">
-                  <div className="summary-item">
-                    <span className="label">Patient Name:</span>
-                    <span className="value">{patient?.patientName || patient?.patient_name || 'N/A'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Patient ID:</span>
-                    <span className="value">{patient?.id || 'N/A'}</span>
-                  </div>
-                  {patient?.fhirId && (
-                    <div className="summary-item">
-                      <span className="label">FHIR ID:</span>
-                      <span className="value" style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>{patient.fhirId}</span>
-                    </div>
-                  )}
-                  <div className="summary-item">
-                    <span className="label">Birth Date:</span>
-                    <span className="value">
-                      {patient?.birthDate
-                        ? new Date(patient.birthDate).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })
-                        : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Age:</span>
-                    <span className="value">{patientAge !== null ? `${patientAge} years` : 'N/A'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Gender:</span>
-                    <span className="value" style={{ textTransform: 'capitalize' }}>
-                      {patient?.gender || 'N/A'}
-                    </span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Race:</span>
-                    <span className="value">{patient?.race || 'N/A'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Ethnicity:</span>
-                    <span className="value">{patient?.ethnicity || 'N/A'}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Marital Status:</span>
-                    <span className="value">
-                      {patient?.maritalStatus === 'S' ? 'Single' :
-                       patient?.maritalStatus === 'M' ? 'Married' :
-                       patient?.maritalStatus === 'D' ? 'Divorced' :
-                       patient?.maritalStatus === 'W' ? 'Widowed' :
-                       patient?.maritalStatus === 'UNK' ? 'Unknown' :
-                       patient?.maritalStatus || 'N/A'}
-                    </span>
-                  </div>
-                  {patient?.language && (
-                    <div className="summary-item">
-                      <span className="label">Language:</span>
-                      <span className="value" style={{ textTransform: 'uppercase' }}>{patient.language}</span>
-                    </div>
-                  )}
-                  {patient?.managingOrganization && (
-                    <div className="summary-item">
-                      <span className="label">Managing Organization:</span>
-                      <span className="value">{patient.managingOrganization}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="summary-card">
-                <h3>Medical Records</h3>
-                <div className="summary-items">
-                  <div className="summary-item">
-                    <span className="label">Upload Date:</span>
-                    <span className="value">
-                      {patient?.uploadedAt
-                        ? new Date(patient.uploadedAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })
-                        : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="label">Primary File:</span>
-                    <span className="value">{patient?.fileName || 'No file attached'}</span>
-                  </div>
-                  {patientFiles.length > 0 && (
-                    <div className="summary-item">
-                      <span className="label">Total NIfTI Files:</span>
-                      <span className="value">{patientFiles.length} CT scan files</span>
-                    </div>
-                  )}
-                  {encounterDetails.length > 0 && (
-                    <>
-                      <div className="summary-item">
-                        <span className="label">Total Encounters:</span>
-                        <span className="value">{encounterDetails.length}</span>
-                      </div>
-                      <div className="summary-item">
-                        <span className="label">Latest Encounter:</span>
-                        <span className="value">
-                          {encounterDetails[0].encounterType} - {new Date(encounterDetails[0].start).toLocaleDateString()}
-                        </span>
-                      </div>
-                      {encounterDetails[0].diagnoses && encounterDetails[0].diagnoses.length > 0 && (
-                        <div className="summary-item">
-                          <span className="label">Primary Diagnosis:</span>
-                          <span className="value">{encounterDetails[0].diagnoses[0].display}</span>
-                        </div>
-                      )}
-                      <div className="summary-item">
-                        <span className="label">Encounter Status:</span>
-                        <span className="value" style={{ textTransform: 'capitalize' }}>
-                          {encounterDetails[0].status}
-                        </span>
-                      </div>
-                      {encounterDetails[0].class && (
-                        <div className="summary-item">
-                          <span className="label">Encounter Class:</span>
-                          <span className="value">{encounterDetails[0].class}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
                 </div>
               </div>
             </div>
@@ -1555,26 +1417,112 @@ const PatientDashboardPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Patient Demographics */}
           <div className="quick-info-card">
-            <h4>Current Study</h4>
-            <div className="study-info">
-              <div className="info-row">
-                <span>File:</span>
-                <span>{patient.fileName || 'No file'}</span>
-              </div>
-              <div className="info-row">
-                <span>Date:</span>
-                <span>{patient.uploadedAt}</span>
-              </div>
-              <div className="info-row">
-                <span>Type:</span>
-                <span>CT Scan</span>
-              </div>
-              <div className="info-row">
-                <span>Status:</span>
-                <span className="status-complete">Complete</span>
-              </div>
+            <h4>Patient Demographics</h4>
+            <div className="info-row">
+              <span>Patient Name:</span>
+              <span>{patient?.patientName || patient?.patient_name || 'N/A'}</span>
             </div>
+            <div className="info-row">
+              <span>Patient ID:</span>
+              <span>{patient?.id || 'N/A'}</span>
+            </div>
+            {patient?.fhirId && (
+              <div className="info-row">
+                <span>FHIR ID:</span>
+                <span style={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>{patient.fhirId}</span>
+              </div>
+            )}
+            <div className="info-row">
+              <span>Birth Date:</span>
+              <span>
+                {patient?.birthDate
+                  ? new Date(patient.birthDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                  : 'N/A'}
+              </span>
+            </div>
+            <div className="info-row">
+              <span>Age:</span>
+              <span>
+                {patient?.birthDate ? (() => {
+                  const today = new Date();
+                  const birth = new Date(patient.birthDate);
+                  let age = today.getFullYear() - birth.getFullYear();
+                  const monthDiff = today.getMonth() - birth.getMonth();
+                  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+                    age--;
+                  }
+                  return `${age} years`;
+                })() : 'N/A'}
+              </span>
+            </div>
+            <div className="info-row">
+              <span>Gender:</span>
+              <span style={{ textTransform: 'capitalize' }}>{patient?.gender || 'N/A'}</span>
+            </div>
+            <div className="info-row">
+              <span>Race:</span>
+              <span>{patient?.race || 'N/A'}</span>
+            </div>
+            <div className="info-row">
+              <span>Ethnicity:</span>
+              <span>{patient?.ethnicity || 'N/A'}</span>
+            </div>
+            <div className="info-row">
+              <span>Marital Status:</span>
+              <span>
+                {patient?.maritalStatus === 'S' ? 'Single' :
+                 patient?.maritalStatus === 'M' ? 'Married' :
+                 patient?.maritalStatus === 'D' ? 'Divorced' :
+                 patient?.maritalStatus === 'W' ? 'Widowed' :
+                 patient?.maritalStatus === 'UNK' ? 'Unknown' :
+                 patient?.maritalStatus || 'N/A'}
+              </span>
+            </div>
+            {patient?.language && (
+              <div className="info-row">
+                <span>Language:</span>
+                <span style={{ textTransform: 'uppercase' }}>{patient.language}</span>
+              </div>
+            )}
+            {patient?.managingOrganization && (
+              <div className="info-row">
+                <span>Managing Org:</span>
+                <span>{patient.managingOrganization}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Medical Records */}
+          <div className="quick-info-card">
+            <h4>Medical Records</h4>
+            <div className="info-row">
+              <span>Upload Date:</span>
+              <span>
+                {patient?.uploadedAt
+                  ? new Date(patient.uploadedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
+                  : 'N/A'}
+              </span>
+            </div>
+            <div className="info-row">
+              <span>Primary File:</span>
+              <span>{patient?.fileName || 'No file'}</span>
+            </div>
+            {patientFiles.length > 0 && (
+              <div className="info-row">
+                <span>Total Files:</span>
+                <span>{patientFiles.length} CT scans</span>
+              </div>
+            )}
           </div>
 
         </aside>

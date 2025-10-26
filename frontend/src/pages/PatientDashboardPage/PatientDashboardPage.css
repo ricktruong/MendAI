@@ -126,6 +126,27 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.patient-info-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.patient-info-sidebar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.patient-info-sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.patient-info-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .patient-card {
@@ -202,12 +223,28 @@
 .info-row {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   padding: 0.5rem 0;
   border-bottom: 1px solid #f1f5f9;
+  gap: 0.5rem;
 }
 
 .info-row:last-child {
   border-bottom: none;
+}
+
+.info-row > span:first-child {
+  color: #64748b;
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.info-row > span:last-child {
+  color: #1e293b;
+  font-weight: 600;
+  text-align: right;
+  word-break: break-word;
 }
 
 .status-complete {
