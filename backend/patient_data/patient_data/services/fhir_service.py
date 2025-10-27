@@ -1,14 +1,11 @@
-# -------------------------------------------
-# Patient Data Backend - FHIR Access Layer
-# -------------------------------------------
-
 import os
 import requests
-from dotenv import load_dotenv
-from google.oauth2 import service_account
+from typing import Dict, Any, List, Optional
 from google.auth.transport.requests import Request
-from typing import List, Dict, Any
+from google.oauth2 import service_account
+from dotenv import load_dotenv
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 # Load environment variables from .env
 load_dotenv()
@@ -20,697 +17,552 @@ PROJECT_ID = os.getenv("GCP_PROJECT_ID")
 LOCATION = os.getenv("GCP_LOCATION")
 DATASET_ID = os.getenv("GCP_DATASET_ID")
 FHIR_STORE_ID = os.getenv("GCP_FHIR_STORE_ID")
-SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
-# Check that all necessary config is set
-if not all([PROJECT_ID, LOCATION, DATASET_ID, FHIR_STORE_ID, SERVICE_ACCOUNT_FILE]):
-    raise ValueError("Missing one or more required environment variables")
-
-# Construct base URL for Google Cloud Healthcare FHIR API
 FHIR_BASE_URL = (
     f"https://healthcare.googleapis.com/v1/projects/{PROJECT_ID}"
     f"/locations/{LOCATION}/datasets/{DATASET_ID}/fhirStores/{FHIR_STORE_ID}/fhir"
 )
 
-# Global cached auth token (for reuse)
-_cached_token = None
-
+REQUEST_TIMEOUT = 30  # Timeout for FHIR API requests
 
 # -------------------------------
-# Auth Helpers
+# Cache Configuration
+# -------------------------------
+_patient_bundle_cache = {}  # Stores full patient bundles
+_patient_list_cache = None  # Stores list of patient IDs
+_cache_timestamps = {}  # Tracks when data was cached
+CACHE_DURATION_MINUTES = 10  # Cache duration
+_patient_list_cache_time = None
+
+def _is_cache_valid(patient_id: str) -> bool:
+    """Check if cached data for this patient is still valid."""
+    if patient_id not in _cache_timestamps:
+        return False
+    
+    cache_time = _cache_timestamps[patient_id]
+    elapsed = datetime.now() - cache_time
+    return elapsed < timedelta(minutes=CACHE_DURATION_MINUTES)
+
+def _is_patient_list_cache_valid() -> bool:
+    """Check if cached patient list is still valid."""
+    if _patient_list_cache_time is None:
+        return False
+    
+    elapsed = datetime.now() - _patient_list_cache_time
+    return elapsed < timedelta(minutes=CACHE_DURATION_MINUTES)
+
+def clear_cache(patient_id: Optional[str] = None):
+    """Clear cache for specific patient or all patients."""
+    global _patient_bundle_cache, _cache_timestamps, _patient_list_cache, _patient_list_cache_time
+    
+    if patient_id:
+        _patient_bundle_cache.pop(patient_id, None)
+        _cache_timestamps.pop(patient_id, None)
+        print(f"✓ Cleared cache for patient {patient_id}")
+    else:
+        _patient_bundle_cache.clear()
+        _cache_timestamps.clear()
+        _patient_list_cache = None
+        _patient_list_cache_time = None
+        print("✓ Cleared all cache")
+
+def get_cache_stats() -> Dict:
+    """Get cache statistics."""
+    total_cached = len(_patient_bundle_cache)
+    valid_cache = sum(1 for pid in _cache_timestamps if _is_cache_valid(pid))
+    
+    return {
+        "total_cached_patients": total_cached,
+        "valid_cached_patients": valid_cache,
+        "expired_cached_patients": total_cached - valid_cache,
+        "cache_duration_minutes": CACHE_DURATION_MINUTES,
+        "cached_patient_ids": list(_patient_bundle_cache.keys()),
+        "patient_list_cached": _patient_list_cache is not None,
+        "patient_list_valid": _is_patient_list_cache_valid()
+    }
+
+# -------------------------------
+# Google Authentication
 # -------------------------------
 def get_google_auth_token():
-    """
-    Get or refresh a Google Cloud access token for Healthcare API using the service account.
-    Caches the token in memory.
-    """
-    global _cached_token
-    if _cached_token and not _cached_token.expired:
-        return _cached_token.token
-
+    """Get OAuth token for Google Healthcare API."""
     credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        CREDENTIALS_PATH,
+        scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
     )
     credentials.refresh(Request())
-    _cached_token = credentials
     return credentials.token
 
-
 # -------------------------------
-# FHIR API Wrappers
+# Core FHIR Functions
 # -------------------------------
 def get_fhir_resource(resource_type: str, resource_id: str):
-    """Retrieve a single FHIR resource by its type and ID.""" 
-    token = get_google_auth_token()
+    """Fetch a single FHIR resource by type and ID."""
     url = f"{FHIR_BASE_URL}/{resource_type}/{resource_id}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/fhir+json",
-    }
-    response = requests.get(url, headers=headers)
-    if not response.ok:
-        raise Exception(f"FHIR API Error: {response.status_code} - {response.text}")
-    return response.json()
-
-
-def search_fhir_resource(resource_type: str, params: dict):
-    """
-    Perform a _search query on a resource type using POST.
-    Returns a single FHIR Bundle.
-    """
-    token = get_google_auth_token()
-    url = f"{FHIR_BASE_URL}/{resource_type}/_search"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/fhir+json;charset=utf-8",
-    }
-    response = requests.post(url, headers=headers, json=params or {})
-    if not response.ok:
-        raise Exception(f"FHIR API Error: {response.status_code} - {response.text}")
-    return response.json()
-
-
-def list_fhir_resources(resource_type: str, params: dict = None, max_pages: int = 5):
-    """
-    Retrieve paginated results of a resource type via repeated _search calls.
-    Returns a flat list of entries.
-    """
-    token = get_google_auth_token()
-    url = f"{FHIR_BASE_URL}/{resource_type}/_search"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/fhir+json;charset=utf-8",
-    }
-
-    resources = []
-    page = 0
     
-    while url and page < max_pages:
-        if url.endswith("/_search"):
-            response = requests.post(url, headers=headers, json=params or {})
-        else:
-            response = requests.get(url, headers=headers)
-        if not response.ok:
-            raise Exception(f"FHIR API Error: {response.status_code} - {response.text}")
-        bundle = response.json()
-        if "entry" in bundle:
-            resources.extend(bundle["entry"])
-        
-        # Check for next page
-        links = bundle.get("link", [])
-        next_link = next((l["url"] for l in links if l["relation"] == "next"), None)
-        url = next_link
-        params = None  # Prevent re-sending params
-        page += 1
-
-    return resources
-
-
-def unwrap_bundle(bundle: dict):
-    """Extract flat list of `resource` objects from a FHIR Bundle."""
-    return [entry["resource"] for entry in bundle.get("entry", [])]
-
-
-def get_patient_subject_ids():
-    """
-    Retrieve all patient subject_ids (FHIR Patient.id).
-    Useful for indexing or browsing the dataset.
-    """
-    patient_entries = list_fhir_resources("Patient", max_pages=10)
-    subject_ids = []
-    for entry in patient_entries:
-        resource = entry.get("resource", {})
-        patient_id = resource.get("id")
-        if patient_id:
-            subject_ids.append(patient_id)
-    return subject_ids
-
-
-# -------------------------------
-# High-Level Patient Bundle Builder
-# -------------------------------
-def get_encounter_centric_patient_bundle(patient_id: str):
-    """
-    Construct a full FHIR bundle of all patient-related data.
-    Includes:
-    - Patient record
-    - All Encounters
-    - All encounter-scoped resources (Observations, Medications, etc.)
-    - All patient-scoped resources (Conditions, Procedures, etc.)
-    - Global static resources (Organization, Location, Medication)
-    """
-    bundle = {
-        "resourceType": "Bundle",
-        "type": "collection",
-        "entry": []
-    }
-    seen = set()  # Prevent duplicate resources
-
-
-    def add_to_bundle(resource):
-        """Helper to add resource to bundle if not already present."""
-        key = f"{resource['resourceType']}/{resource['id']}"
-        if key not in seen:
-            seen.add(key)
-            bundle["entry"].append({"resource": resource})
-
-    # 1. Patient
-    patient = get_fhir_resource("Patient", patient_id)
-    add_to_bundle(patient)
-
-    # 2. Encounters for patient
-    encounter_bundle = search_fhir_resource("Encounter", {"subject": f"Patient/{patient_id}"})
-    encounter_entries = encounter_bundle.get("entry", [])
-    for entry in encounter_entries:
-        add_to_bundle(entry["resource"])
-    encounter_ids = [e["resource"]["id"] for e in encounter_entries]
-
-    # 3. Resources linked via encounter/context (encounter-scoped)
-    encounter_related_types = [
-        ("Observation", "encounter"),
-        ("Procedure", "encounter"),
-        ("Condition", "encounter"),
-        ("MedicationAdministration", "context"),
-        ("MedicationDispense", "context"),
-        ("MedicationStatement", "context"),
-        ("MedicationRequest", "encounter"),
-        ("Specimen", "encounter")
-    ]
-
-    for enc_id in encounter_ids:
-        for resource_type, ref_field in encounter_related_types:
-            try:
-                resources = get_resources_by_encounter(enc_id, resource_type, ref_field)
-                for r in resources:
-                    add_to_bundle(r["resource"])
-            except Exception as e:
-                print(f"⚠️ Skipped {resource_type} for Encounter {enc_id}: {e}")
-
-    # 4. Resources directly scoped to patient (e.g., Meds, Conditions)
-    patient_scoped_types = [
-        "Observation", "Condition", "Procedure", "Specimen",
-        "MedicationStatement", "MedicationRequest", "MedicationDispense"
-    ]
-    for resource_type in patient_scoped_types:
-        try:
-            patient_resources = search_fhir_resource(resource_type, {"subject": f"Patient/{patient_id}"})
-            for entry in patient_resources.get("entry", []):
-                add_to_bundle(entry["resource"])
-        except Exception as e:
-            print(f"⚠️ Failed to fetch patient-scoped {resource_type}: {e}")
-
-    # 5. Global shared reference resources
-    for global_type in ["Medication", "Location", "Organization"]:
-        try:
-            resources = list_fhir_resources(global_type, max_pages=1)
-            for r in resources:
-                add_to_bundle(r["resource"])
-        except Exception as e:
-            print(f"⚠️ Skipped global resource {global_type}: {e}")
-
-    return bundle
-
-
-# -------------------------------
-# Resource Helper Utilities
-# -------------------------------
-def get_observations_for_patient(patient_id: str, code: str = None):
-    """Query Observations for a patient, optionally filtered by LOINC/SNOMED code."""
-    params = {"patient": patient_id}
-    if code:
-        params["code"] = code
-    return search_fhir_resource("Observation", params)
-
-
-def get_encounters_for_patient(patient_id: str):
-    """Query all Encounters for a patient."""
-    params = {"patient": patient_id}
-    return search_fhir_resource("Encounter", params)
-
-
-def get_conditions_for_patient(patient_id: str):
-    """Query all Conditions for a patient."""
-    params = {"patient": patient_id}
-    return search_fhir_resource("Condition", params)
-
-
-def get_resources_by_encounter(encounter_id: str, resource_type: str, reference_field: str = "encounter"):
-    """
-    Generic method to fetch any resource linked to a specific encounter.
-    The `reference_field` may be either 'encounter' or 'context' depending on resource type.
-    """
     token = get_google_auth_token()
-    url = f"{FHIR_BASE_URL}/{resource_type}"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/fhir+json"
     }
-    params = {reference_field: f"Encounter/{encounter_id}"}
-    response = requests.get(url, headers=headers, params=params)
-    if not response.ok:
-        raise Exception(f"FHIR API Error ({resource_type}): {response.status_code} - {response.text}")
-    return response.json().get("entry", [])
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.Timeout:
+        raise Exception(f"Request timed out after {REQUEST_TIMEOUT} seconds")
+    except requests.exceptions.HTTPError as e:
+        raise Exception(f"FHIR API Error: {e.response.status_code} - {e.response.text}")
+    except Exception as e:
+        raise Exception(f"Error fetching {resource_type}/{resource_id}: {str(e)}")
 
-
-# -------------------------------
-# Bundle Merging and Transformation
-# -------------------------------
-def merge_fhir_bundles(*bundles):
-    """
-    Merge multiple FHIR bundles into one.
-    Deduplicates entries based on resourceType/id.
-    """
-    seen_ids = set()
-    merged_entries = []
-
-    for bundle in bundles:
-        for entry in bundle.get("entry", []):
-            resource = entry.get("resource")
-            if not resource:
-                continue
-            rid = resource.get("id")
-            rtype = resource.get("resourceType")
-            unique_key = f"{rtype}/{rid}"
-            if unique_key not in seen_ids:
-                seen_ids.add(unique_key)
-                merged_entries.append({"resource": resource})
-
-    return {
-        "resourceType": "Bundle",
-        "type": "collection",
-        "entry": merged_entries
+def search_fhir_resource(resource_type: str, params: Dict[str, Any] = None):
+    """Search for FHIR resources with query parameters."""
+    url = f"{FHIR_BASE_URL}/{resource_type}"
+    
+    token = get_google_auth_token()
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/fhir+json"
     }
+    
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.Timeout:
+        raise Exception(f"Search request timed out after {REQUEST_TIMEOUT} seconds")
+    except requests.exceptions.HTTPError as e:
+        raise Exception(f"FHIR Search Error: {e.response.status_code} - {e.response.text}")
+    except Exception as e:
+        raise Exception(f"Error searching {resource_type}: {str(e)}")
 
+def unwrap_bundle(bundle: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract resources from a FHIR Bundle."""
+    if not bundle or "entry" not in bundle:
+        return []
+    return [entry["resource"] for entry in bundle.get("entry", [])]
 
 # -------------------------------
-# Normalization of Patient Data
+# Patient Data Functions (WITH CACHING)
+# -------------------------------
+def get_patient_subject_ids() -> List[str]:
+    """
+    Get all patient subject IDs from the FHIR store.
+    WITH CACHING for patient list.
+    """
+    global _patient_list_cache, _patient_list_cache_time
+    
+    # Check cache
+    if _is_patient_list_cache_valid():
+        print(f"✓ [CACHE HIT] Returning cached patient list ({len(_patient_list_cache)} patients)")
+        return _patient_list_cache
+    
+    print("⟳ [CACHE MISS] Fetching patient list from FHIR...")
+    
+    try:
+        # Fetch all patients (paginate if needed)
+        all_patient_ids = []
+        params = {"_count": "100"}
+        
+        while True:
+            bundle = search_fhir_resource("Patient", params)
+            patient_ids = [
+                resource.get("id")
+                for resource in unwrap_bundle(bundle)
+                if resource.get("id")
+            ]
+            all_patient_ids.extend(patient_ids)
+            
+            # Check for next page
+            next_link = None
+            for link in bundle.get("link", []):
+                if link.get("relation") == "next":
+                    next_link = link.get("url")
+                    break
+            
+            if not next_link:
+                break
+            
+            # Extract page token for next request
+            if "_page_token=" in next_link:
+                page_token = next_link.split("_page_token=")[1].split("&")[0]
+                params["_page_token"] = page_token
+            else:
+                break
+        
+        # Cache the result
+        _patient_list_cache = all_patient_ids
+        _patient_list_cache_time = datetime.now()
+        print(f"✓ [CACHED] Stored {len(all_patient_ids)} patient IDs (expires in {CACHE_DURATION_MINUTES} min)")
+        
+        return all_patient_ids
+        
+    except Exception as e:
+        raise Exception(f"Error fetching patient IDs: {str(e)}")
+
+def get_encounter_centric_patient_bundle(patient_id: str):
+    """
+    Fetch a comprehensive patient bundle including encounters and related resources.
+    WITH CACHING - returns cached data if available and valid.
+    """
+    
+    # CACHE CHECK - Return cached data if valid
+    if _is_cache_valid(patient_id):
+        print(f"✓ [CACHE HIT] Returning cached bundle for patient {patient_id}")
+        return _patient_bundle_cache[patient_id]
+    
+    # CACHE MISS - Fetch fresh data
+    print(f"⟳ [CACHE MISS] Fetching fresh data for patient {patient_id}...")
+    
+    try:
+        # Get patient resource
+        print(f"  [1/7] Fetching patient demographics...")
+        patient = get_fhir_resource("Patient", patient_id)
+        
+        # Get encounters (limited to most recent)
+        print(f"  [2/7] Fetching encounters...")
+        encounters_bundle = search_fhir_resource("Encounter", {
+            "patient": patient_id,
+            "_count": "20"
+        })
+        encounters = unwrap_bundle(encounters_bundle)
+        
+        # Get observations (limited)
+        print(f"  [3/7] Fetching observations...")
+        observations_bundle = search_fhir_resource("Observation", {
+            "patient": patient_id,
+            "_count": "50",
+            "_sort": "-date"
+        })
+        observations = unwrap_bundle(observations_bundle)
+        
+        # Get conditions
+        print(f"  [4/7] Fetching conditions...")
+        conditions_bundle = search_fhir_resource("Condition", {
+            "patient": patient_id,
+            "_count": "50"
+        })
+        conditions = unwrap_bundle(conditions_bundle)
+        
+        # Get medications
+        print(f"  [5/7] Fetching medications...")
+        medications_bundle = search_fhir_resource("MedicationRequest", {
+            "patient": patient_id,
+            "_count": "50"
+        })
+        medications = unwrap_bundle(medications_bundle)
+        
+        # Get allergies
+        print(f"  [6/7] Fetching allergies...")
+        allergies_bundle = search_fhir_resource("AllergyIntolerance", {
+            "patient": patient_id
+        })
+        allergies = unwrap_bundle(allergies_bundle)
+        
+        # Get immunizations
+        print(f"  [7/7] Fetching immunizations...")
+        immunizations_bundle = search_fhir_resource("Immunization", {
+            "patient": patient_id
+        })
+        immunizations = unwrap_bundle(immunizations_bundle)
+        
+        # Optional: Get procedures (commented out to save time)
+        # procedures_bundle = search_fhir_resource("Procedure", {"patient": patient_id})
+        # procedures = unwrap_bundle(procedures_bundle)
+        procedures = []
+        
+        # Build comprehensive bundle
+        all_resources = (
+            [patient] + 
+            encounters + 
+            observations + 
+            conditions + 
+            medications + 
+            allergies + 
+            immunizations + 
+            procedures
+        )
+        
+        result = {
+            "resourceType": "Bundle",
+            "type": "searchset",
+            "total": len(all_resources),
+            "entry": [{"resource": resource} for resource in all_resources if resource]
+        }
+        
+        # STORE IN CACHE
+        _patient_bundle_cache[patient_id] = result
+        _cache_timestamps[patient_id] = datetime.now()
+        print(f"✓ [CACHED] Stored bundle for patient {patient_id} ({len(all_resources)} resources, expires in {CACHE_DURATION_MINUTES} min)")
+        
+        return result
+        
+    except Exception as e:
+        raise Exception(f"Error fetching patient bundle: {str(e)}")
+
+# -------------------------------
+# Normalization Functions
 # -------------------------------
 def normalize_fhir_bundle(bundle: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalize a raw FHIR bundle into an encounter-centric structure.
-    
-    This function takes a FHIR Bundle and organizes its resources by encounters,
-    simplifying and formatting the data for frontend and LLM-friendly consumption.
-    
-    Returns a structure:
-    {
-        "patient": {...},
-        "encounters": [
-            {
-                "id": ...,
-                "status": ...,
-                "start": ...,
-                "end": ...,
-                ...
-                "observations": [...],
-                "procedures": [...],
-                ...
-            },
-            ...
-        ]
-    }
+    Normalize a FHIR bundle into a structured clinical data format.
     """
-
-    # Build a map of resources by type (e.g., Observation, Encounter)
+    resources = unwrap_bundle(bundle)
+    
+    # Organize resources by type
     resource_map = defaultdict(list)
-
-    for entry in bundle.get("entry", []):
-        resource = entry.get("resource", {})
-        rtype = resource.get("resourceType")
-        if rtype:
-            resource_map[rtype].append(resource)
+    patient = None
     
-    # --- Utility to Resolve Location References ---
-    def resolve_location(loc_ref: str, resource_map: Dict[str, List[dict]]) -> dict:
-        """
-        Look up a full Location resource by reference (e.g., 'Location/abc123').
-        Extracts name and type if found.
-        """
-        loc_id = loc_ref.split("/")[-1].strip().lower()
-        for loc in resource_map.get("Location", []):
-            if loc.get("id", "").strip().lower() == loc_id:
-                return {
-                    "name": loc.get("name"),
-                    "typeCode": loc.get("physicalType", {}).get("coding", [{}])[0].get("code"),
-                    "typeDisplay": loc.get("physicalType", {}).get("coding", [{}])[0].get("display"),
-                }
-        return {}
-
-
-    # --- Normalize Patient Demographics ---
-    def extract_patient(patient, resource_map):
-        """
-        Extract patient-level fields and resolve managing organization, race, and ethnicity.
-        """
-        # Get managing organization name
-        org_ref = patient.get("managingOrganization", {}).get("reference", "")
-        org_id = org_ref.split("/")[-1] if org_ref else None
-        org_name = next(
-            (org.get("name") for org in resource_map.get("Organization", []) if org.get("id") == org_id),
-            None
-        )
-        
-        # Parse race and ethnicity from extensions
-        extensions = patient.get("extension", [])
-        race = None
-        ethnicity = None
-        if len(extensions) > 0:
-            race_exts = extensions[0].get("extension", [])
-            race = next((e.get("valueCoding", {}).get("display") for e in race_exts if e.get("url") == "ombCategory"), None)
-        if len(extensions) > 1:
-            eth_exts = extensions[1].get("extension", [])
-            ethnicity = next((e.get("valueCoding", {}).get("display") for e in eth_exts if e.get("url") == "ombCategory"), None)
-
-        # Build and return patient object
-        return {
-            "id": patient.get("identifier", [{}])[0].get("value"),
-            "fhirId": patient.get("id"),
-            "birthDate": patient.get("birthDate"),
-            "gender": patient.get("gender"),
-            "name": patient.get("name", [{}])[0].get("family"),
-            "language": patient.get("communication", [{}])[0]
-                        .get("language", {})
-                        .get("coding", [{}])[0]
-                        .get("code"),
-            "maritalStatus": patient.get("maritalStatus", {})
-                            .get("coding", [{}])[0]
-                            .get("code"),
-            "deceasedDateTime": patient.get("deceasedDateTime"),
-            "managingOrganization": org_name,
-            "race": race,
-            "ethnicity": ethnicity
-        }
-
+    for resource in resources:
+        resource_type = resource.get("resourceType")
+        if resource_type == "Patient":
+            patient = resource
+        else:
+            resource_map[resource_type].append(resource)
     
-    # --- Group resources by Encounter reference ---
-    def group_by_encounter(resources, path="encounter"):
-        """
-        Groups resources that reference an Encounter using a field like `encounter` or `context`.
-        Returns a dict of { encounter_id: [resource, ...] }
-        """
-        grouped = defaultdict(list)
-        for r in resources:
-            ref = r.get(path, {})
-            if not isinstance(ref, dict):
-                continue
-            ref_val = ref.get("reference", "")
-            if ref_val.startswith("Encounter/"):
-                enc_id = ref_val.split("/")[1]
-                grouped[enc_id].append(r)
-        return grouped
+    if not patient:
+        raise ValueError("No Patient resource found in bundle")
+    
+    # Extract patient demographics
+    patient_data = {
+        "id": patient.get("id"),
+        "resourceType": "Patient",
+        "name": extract_patient_name(patient),
+        "birthDate": patient.get("birthDate"),
+        "age": calculate_age(patient.get("birthDate")),
+        "gender": patient.get("gender"),
+        "maritalStatus": extract_codeable_concept(patient.get("maritalStatus")),
+    }
+    
+    # Normalize clinical data
+    patient_data["encounters"] = [
+        normalize_encounter(enc) for enc in resource_map.get("Encounter", [])
+    ]
+    
+    patient_data["observations"] = [
+        normalize_observation(obs) for obs in resource_map.get("Observation", [])
+    ]
+    
+    patient_data["conditions"] = [
+        extract_codeable_concept(cond.get("code")) 
+        for cond in resource_map.get("Condition", [])
+    ]
+    
+    patient_data["medications"] = [
+        extract_medication_info(med) 
+        for med in resource_map.get("MedicationRequest", [])
+    ]
+    
+    patient_data["allergies"] = [
+        extract_codeable_concept(allergy.get("code")) 
+        for allergy in resource_map.get("AllergyIntolerance", [])
+    ]
+    
+    patient_data["immunizations"] = [
+        extract_codeable_concept(imm.get("vaccineCode")) 
+        for imm in resource_map.get("Immunization", [])
+    ]
+    
+    patient_data["lastUpdated"] = datetime.now().isoformat()
+    
+    return patient_data
 
+def extract_patient_name(patient: Dict) -> str:
+    """Extract patient's full name."""
+    names = patient.get("name", [])
+    if names:
+        name = names[0]
+        family = name.get("family", "")
+        given = " ".join(name.get("given", []))
+        return f"{given} {family}".strip() or "Unknown"
+    return "Unknown"
 
-    # --- Normalize each resource type ---
-    # ------------------------------
-    # Normalize Observations
-    # ------------------------------
-    def simplify_observation(obs):
-        code = obs.get("code", {}).get("coding", [{}])[0]
-        category = obs.get("category", [{}])[0].get("coding", [{}])[0]
+def calculate_age(birth_date: str) -> int:
+    """Calculate age from birth date."""
+    if not birth_date:
+        return 0
+    try:
+        birth = datetime.strptime(birth_date, "%Y-%m-%d")
+        today = datetime.now()
+        age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+        return age
+    except:
+        return 0
 
-        # Value can be a quantity or string
-        value = None
-        if "valueQuantity" in obs:
-            q = obs["valueQuantity"]
-            value = {
-                "value": q.get("value"),
-                "unit": q.get("unit"),
-                "code": q.get("code")
-            }
-        elif "valueString" in obs:
-            value = obs["valueString"]
+def extract_codeable_concept(codeable_concept: Dict) -> str:
+    """Extract display text from CodeableConcept."""
+    if not codeable_concept:
+        return "Unknown"
+    
+    if "text" in codeable_concept:
+        return codeable_concept["text"]
+    
+    codings = codeable_concept.get("coding", [])
+    if codings:
+        return codings[0].get("display", "Unknown")
+    
+    return "Unknown"
 
-        # Optional components (mostly for panels)
-        components = []
-        for comp in obs.get("component", []):
-            c = comp.get("code", {}).get("coding", [{}])[0]
-            v = comp.get("valueQuantity", {})
-            components.append({
-                "code": c.get("code"),
-                "text": c.get("display"),
-                "value": {
-                    "value": v.get("value"),
-                    "unit": v.get("unit")
-                }
-            })
-
-        result = {
-            "id": obs.get("id"),
-            "status": obs.get("status"),
-            "effectiveDateTime": obs.get("effectiveDateTime"),
-            "code": {
-                "code": code.get("code"),
-                "text": code.get("display")
-            },
-            "category": {
-                "code": category.get("code")
-            } if category.get("code") else None,
-            "value": value,
-            "components": components
-        }
-
-        # Remove nulls
-        return {k: v for k, v in result.items() if v is not None}
-
-
-    # ------------------------------
-    # Normalize MedicationAdministration 
-    # ------------------------------
-    def simplify_med_admin(med):
-        med_code = med.get("medicationCodeableConcept", {}).get("coding", [{}])[0]
-        category = med.get("category", {}).get("coding", [{}])[0]
-        dose = med.get("dosage", {}).get("dose", {})
-        method = med.get("dosage", {}).get("method", {}).get("coding", [{}])[0]
-
-        result = {
-            "id": med.get("id"),
-            "status": med.get("status"),
-            "effectiveDateTime": med.get("effectiveDateTime") or med.get("effectivePeriod", {}).get("start"),
-            "medication": {
-                "code": med_code.get("code"),
-                "text": med_code.get("display")
-            },
-            "category": {
-                "code": category.get("code")
-            } if category.get("code") else None,
-            "dose": {
-                "value": dose.get("value"),
-                "unit": dose.get("unit")
-            } if dose.get("value") else None,
-            "method": {
-                "code": method.get("code")
-            } if method.get("code") else None
-        }
-
-        # Remove null values
-        return {k: v for k, v in result.items() if v is not None}
-
-
-    # ------------------------------
-    # Normalize MedicationDispense
-    # ------------------------------
-    def simplify_med_dispense(mdisp):
-        med = mdisp.get("medicationCodeableConcept", {}).get("coding", [{}])[0]
-        dosage = mdisp.get("dosageInstruction", [{}])[0] if mdisp.get("dosageInstruction") else {}
- 
-        route = dosage.get("route", {}).get("coding", [{}])[0].get("code")
-        timing = dosage.get("timing", {}).get("code", {}).get("coding", [{}])[0].get("code")
-
-        context_ref = mdisp.get("context", {}).get("reference", "")
-
-        result = {
-            "id": mdisp.get("id"),
-            "identifier": mdisp.get("identifier", [{}])[0].get("value"),
-            "status": mdisp.get("status"),
-            "encounterId": context_ref.split("/")[-1] if context_ref.startswith("Encounter/") else None,
-            "medication": med.get("code"),
-            "route": route,
-            "timing": timing,
-            "whenHandedOver": mdisp.get("whenHandedOver")
-        }
-
-        # Clean nulls
-        return {k: v for k, v in result.items() if v is not None}
-
-
-    # ------------------------------
-    # Normalize MedicationStatements
-    # ------------------------------
-    def simplify_med_statement(stmt):
-        codings = stmt.get("medicationCodeableConcept", {}).get("coding", [])
-        best_coding = next((c for c in codings if c.get("display")), codings[-1] if codings else {})
-        text = stmt.get("medicationCodeableConcept", {}).get("text")
-
-        context_ref = stmt.get("context", {}).get("reference", "")
-
-        result = {
-            "id": stmt.get("id"),
-            "status": stmt.get("status"),
-            "dateAsserted": stmt.get("dateAsserted"),
-            "medication": {
-                "code": best_coding.get("code"),
-                "text": text,
-                "display": best_coding.get("display")
-            }
-        }
-
-        # Remove nulls and empty medication keys
-        result["medication"] = {k: v for k, v in result["medication"].items() if v}
-        if not result["medication"]:
-            del result["medication"]
-
-        return {k: v for k, v in result.items() if v is not None}
-
-
-    # ------------------------------
-    # Normalize MedicationRequests
-    # ------------------------------
-    def simplify_med_request(mr):
-        dosage = (
-            mr.get("dosageInstruction", [{}])[0]
-            .get("doseAndRate", [{}])[0]
-            .get("doseQuantity", {})
-        )
-
-        route = (
-            mr.get("dosageInstruction", [{}])[0]
-            .get("route", {}).get("coding", [{}])[0]
-        )
-
-        context_ref = mr.get("encounter", {}).get("reference", "")
-
-        result = {
-            "id": mr.get("id"),
-            "identifier": mr.get("identifier", [{}])[0].get("value"),
-            "status": mr.get("status"),
-            "intent": mr.get("intent"),
-            "authoredOn": mr.get("authoredOn"),
-            "dosage": {
-                "value": dosage.get("value"),
-                "unit": dosage.get("unit")
-            } if dosage.get("value") else None,
-            "route": route.get("code"),
-            "validityPeriod": {
-                "start": mr.get("dispenseRequest", {}).get("validityPeriod", {}).get("start"),
-                "end": mr.get("dispenseRequest", {}).get("validityPeriod", {}).get("end")
-            }
-        }
-
-        # Clean out nulls and empty dicts
-        result = {k: v for k, v in result.items() if v is not None}
-        if "validityPeriod" in result and not any(result["validityPeriod"].values()):
-            del result["validityPeriod"]
-
-        return result
-
-
-    # ------------------------------
-    # Normalize Conditions
-    # ------------------------------
-    def simplify_condition(cond):
-        code = cond.get("code", {}).get("coding", [{}])[0]
-        return {
-            "resourceType": cond.get("resourceType"),
-            "id": cond.get("id"),
-            "code": code.get("code"),
-            "display": code.get("display"),
-            "category": cond.get("category", [{}])[0].get("coding", [{}])[0].get("code")
-        }
-
-
-    # ------------------------------
-    # Normalize Procedures
-    # ------------------------------
-    def simplify_procedure(proc):
-        code = proc.get("code", {}).get("coding", [{}])[0]
-        category = proc.get("category", {}).get("coding", [{}])[0]
-        body_site = proc.get("bodySite", [{}])[0].get("coding", [{}])[0]
-        performed_start = proc.get("performedPeriod", {}).get("start")
-        performed_end = proc.get("performedPeriod", {}).get("end")
-
-        result = {
-            "id": proc.get("id"),
-            "code": {
-                "code": code.get("code"),
-                "display": code.get("display")
-            },
-            "status": proc.get("status")
-        }
-
-        # Conditionally add fields only if they have data
-        if category.get("code"):
-            result["category"] = {
-                "code": category.get("code"),
-                "display": category.get("display")
-            }
-
-        if body_site.get("code"):
-            result["bodySite"] = {
-                "code": body_site.get("code"),
-                "display": body_site.get("display"),
-                "system": body_site.get("system")
-            }
-
-        if performed_start or performed_end:
-            result["performedPeriod"] = {
-                "start": performed_start,
-                "end": performed_end
-            }
-
-        return result
-
-    # Group each resource type by encounter
-    conditions_by_enc = group_by_encounter(resource_map["Condition"])
-    procedures_by_enc = group_by_encounter(resource_map["Procedure"])
-    observations_by_enc = group_by_encounter(resource_map["Observation"])
-    medications_by_enc = group_by_encounter(resource_map["MedicationAdministration"], path="context")
-    dispenses_by_enc = group_by_encounter(resource_map["MedicationDispense"], path="context")
-    medstatements_by_enc = group_by_encounter(resource_map["MedicationStatement"], path="context")
-    medrequest_by_enc = group_by_encounter(resource_map["MedicationRequest"], path="encounter")
-
-
-    # --- Build per-encounter view ---
-    encounters_view = []
-    for enc in resource_map["Encounter"]:
-        enc_id = enc.get("id")
-
-        # Normalize medications linked to this encounter
-        meds = [simplify_med_admin(m) for m in medications_by_enc.get(enc_id, [])]
-
-        # Construct normalized encounter object
-        entry = {
-            "id": enc_id,
-            "status": enc.get("status"),
-            "start": enc.get("period", {}).get("start"),
-            "end": enc.get("period", {}).get("end"),
-            "class": enc.get("class", {}).get("code"),
-            "admitSource": enc.get("hospitalization", {}).get("admitSource", {}).get("coding", [{}])[0].get("code"),
-            "dischargeDisposition": enc.get("hospitalization", {}).get("dischargeDisposition", {}).get("coding", [{}])[0].get("code"),
-            "encounterTypeCode": enc.get("type", [{}])[0].get("coding", [{}])[0].get("code"),
-            "encounterType": enc.get("type", [{}])[0].get("coding", [{}])[0].get("display"),
-            "locations": [
-                {
-                    **resolve_location(loc.get("location", {}).get("reference", ""), resource_map),
-                    "start": loc.get("period", {}).get("start"),
-                    "end": loc.get("period", {}).get("end"),
-                }
-                for loc in enc.get("location", [])
-            ],
-            "diagnoses": [simplify_condition(c) for c in conditions_by_enc.get(enc_id, [])],
-            "procedures": [simplify_procedure(p) for p in procedures_by_enc.get(enc_id, [])],
-            "observations": [simplify_observation(o) for o in observations_by_enc.get(enc_id, [])],
-            "medicationAdministration": meds,
-            "medicationDispense": [simplify_med_dispense(d) for d in dispenses_by_enc.get(enc_id, [])],
-            "medicationStatements": [simplify_med_statement(d) for d in medstatements_by_enc.get(enc_id, [])],
-            "medicationRequests": [simplify_med_request(d) for d in medrequest_by_enc.get(enc_id, [])]
-        }
-
-        encounters_view.append(entry)
-
-    # --- Final normalized output ---
+def normalize_encounter(encounter: Dict) -> Dict:
+    """Normalize encounter data."""
     return {
-        "patient": extract_patient(resource_map["Patient"][0], resource_map),
-        "encounters": encounters_view
+        "id": encounter.get("id"),
+        "type": extract_codeable_concept(encounter.get("type", [{}])[0] if encounter.get("type") else {}),
+        "status": encounter.get("status"),
+        "date": encounter.get("period", {}).get("start"),
+        "reason": extract_codeable_concept(encounter.get("reasonCode", [{}])[0] if encounter.get("reasonCode") else {})
     }
 
+def normalize_observation(observation: Dict) -> Dict:
+    """Normalize observation data."""
+    value = observation.get("valueQuantity", {})
+    
+    return {
+        "id": observation.get("id"),
+        "code": extract_codeable_concept(observation.get("code")),
+        "value": value.get("value"),
+        "unit": value.get("unit"),
+        "date": observation.get("effectiveDateTime") or observation.get("issued")
+    }
+
+def extract_medication_info(medication_request: Dict) -> Dict:
+    """Extract medication information."""
+    medication = medication_request.get("medicationCodeableConcept", {})
+    dosage = medication_request.get("dosageInstruction", [{}])[0] if medication_request.get("dosageInstruction") else {}
+    
+    return {
+        "name": extract_codeable_concept(medication),
+        "dosage": dosage.get("text", ""),
+        "frequency": dosage.get("timing", {}).get("code", {}).get("text", "")
+    }
+
+# -------------------------------
+# MAIN CONVENIENCE FUNCTION - THIS WAS MISSING!
+# -------------------------------
+def get_patient_bundle_normalized(patient_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Get patient data bundle and return in normalized format.
+    This is a convenience function that combines fetching and normalization with caching.
+    
+    This is the PRIMARY function to use for getting patient data.
+    
+    Args:
+        patient_id: FHIR patient identifier
+        
+    Returns:
+        dict: Normalized patient data with all clinical resources
+        None: If patient not found
+    """
+    try:
+        # Check if we have normalized data cached
+        normalized_cache_key = f"normalized:{patient_id}"
+        
+        if normalized_cache_key in _patient_bundle_cache and _is_cache_valid(patient_id):
+            print(f"✓ [CACHE HIT] Returning cached normalized data for patient {patient_id}")
+            return _patient_bundle_cache[normalized_cache_key]
+        
+        # Get raw bundle (this function has its own caching)
+        bundle = get_encounter_centric_patient_bundle(patient_id)
+        
+        if not bundle:
+            print(f"✗ Patient {patient_id} not found")
+            return None
+        
+        # Normalize the bundle
+        print(f"⟳ Normalizing bundle for patient {patient_id}...")
+        normalized_data = normalize_fhir_bundle(bundle)
+        
+        # Cache the normalized result separately
+        _patient_bundle_cache[normalized_cache_key] = normalized_data
+        _cache_timestamps[patient_id] = datetime.now()
+        
+        print(f"✓ [CACHED] Normalized data for patient {patient_id} (expires in {CACHE_DURATION_MINUTES} min)")
+        
+        return normalized_data
+        
+    except Exception as e:
+        print(f"✗ Error getting normalized patient data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+# -------------------------------
+# Legacy Helper Functions (for compatibility with other routes)
+# -------------------------------
+def get_observations_for_patient(patient_id: str):
+    """Get all observations for a patient."""
+    try:
+        bundle = search_fhir_resource("Observation", {
+            "patient": patient_id,
+            "_count": "100",
+            "_sort": "-date"
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching observations: {str(e)}")
+
+def get_encounters_for_patient(patient_id: str):
+    """Get all encounters for a patient."""
+    try:
+        bundle = search_fhir_resource("Encounter", {
+            "patient": patient_id,
+            "_count": "100"
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching encounters: {str(e)}")
+
+def get_conditions_for_patient(patient_id: str):
+    """Get all conditions for a patient."""
+    try:
+        bundle = search_fhir_resource("Condition", {
+            "patient": patient_id,
+            "_count": "100"
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching conditions: {str(e)}")
+
+def get_medications_for_patient(patient_id: str):
+    """Get all medication requests for a patient."""
+    try:
+        bundle = search_fhir_resource("MedicationRequest", {
+            "patient": patient_id,
+            "_count": "100"
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching medications: {str(e)}")
+
+def get_allergies_for_patient(patient_id: str):
+    """Get all allergies for a patient."""
+    try:
+        bundle = search_fhir_resource("AllergyIntolerance", {
+            "patient": patient_id
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching allergies: {str(e)}")
+
+def get_immunizations_for_patient(patient_id: str):
+    """Get all immunizations for a patient."""
+    try:
+        bundle = search_fhir_resource("Immunization", {
+            "patient": patient_id
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching immunizations: {str(e)}")
+
+def get_procedures_for_patient(patient_id: str):
+    """Get all procedures for a patient."""
+    try:
+        bundle = search_fhir_resource("Procedure", {
+            "patient": patient_id
+        })
+        return unwrap_bundle(bundle)
+    except Exception as e:
+        raise Exception(f"Error fetching procedures: {str(e)}")
