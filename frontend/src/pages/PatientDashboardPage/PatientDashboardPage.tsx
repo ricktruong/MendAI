@@ -129,6 +129,55 @@ const PatientDashboardPage: React.FC = () => {
     loadPatientNormalizedData();
   }, [patient]);
 
+  // Load images for a specific file
+  const loadImagesForFile = async (fileId: string) => {
+    if (!patient) return;
+
+    try {
+      setLoadingImages(true);
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images?file_id=${fileId}`;
+      console.log('Fetching images for file:', fileId, 'from:', apiUrl);
+
+      const imagesResponse = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log('Images response status:', imagesResponse.status);
+      console.log('Images response ok:', imagesResponse.ok);
+
+      if (imagesResponse.ok) {
+        const imagesData = await imagesResponse.json();
+        console.log('Images API response:', imagesData);
+
+        if (imagesData.images && imagesData.images.length > 0) {
+          console.log('Setting CT images, count:', imagesData.images.length);
+          setCtImages(imagesData.images);
+          setCurrentImageIndex(0);
+          console.log('CT images set successfully for file:', fileId);
+        } else {
+          console.error('No images in response:', imagesData);
+          throw new Error('No images returned from backend');
+        }
+      } else {
+        const errorText = await imagesResponse.text();
+        console.error('Images API error response:', errorText);
+        throw new Error(`Images API failed: ${imagesResponse.status}`);
+      }
+    } catch (imageError) {
+      console.error('Failed to load CT images:', imageError);
+      // Fallback to placeholder
+      setCtImages([
+        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">Image Load Failed</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Check console for details</text></svg>'
+      ]);
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
   // Load CT files for the selected patient
   useEffect(() => {
     const loadPatientFiles = async () => {
@@ -155,60 +204,22 @@ const PatientDashboardPage: React.FC = () => {
           setPatientFiles(niiFiles);
 
           if (niiFiles.length > 0) {
-            // Fetch actual CT images from the backend
-            try {
-              const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images`;
-              console.log('Fetching images from:', apiUrl);
-
-              const imagesResponse = await fetch(apiUrl, {
-                method: 'GET',
-                headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                  'Content-Type': 'application/json',
-                },
-              });
-
-              console.log('Images response status:', imagesResponse.status);
-              console.log('Images response ok:', imagesResponse.ok);
-
-              if (imagesResponse.ok) {
-                const imagesData = await imagesResponse.json();
-                console.log('Images API response:', imagesData);
-
-                if (imagesData.images && imagesData.images.length > 0) {
-                  console.log('Setting CT images, count:', imagesData.images.length);
-                  console.log('First image preview:', imagesData.images[0].substring(0, 100) + '...');
-                  setCtImages(imagesData.images);
-                  setCurrentFileIndex(0);
-                  setCurrentImageIndex(0);
-                  console.log('CT images set successfully');
-                } else {
-                  console.error('No images in response:', imagesData);
-                  throw new Error('No images returned from backend');
-                }
-              } else {
-                const errorText = await imagesResponse.text();
-                console.error('Images API error response:', errorText);
-                throw new Error(`Images API failed: ${imagesResponse.status}`);
-              }
-            } catch (imageError) {
-              console.error('Failed to load CT images:', imageError);
-              // Fallback to placeholder
-              setCtImages([
-                'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">Image Load Failed</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Check console for details</text></svg>'
-              ]);
-            }
+            // Load images for the first file
+            setCurrentFileIndex(0);
+            await loadImagesForFile(niiFiles[0].id);
           } else {
             // No NIfTI files found
             setCtImages([
               'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">No NIfTI Files</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Please upload .nii files</text></svg>'
             ]);
+            setLoadingImages(false);
           }
         } else {
           // No files available
           setCtImages([
             'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23f3f4f6"/><circle cx="200" cy="200" r="80" fill="%23d1d5db" stroke="%236b7280" stroke-width="2"/><text x="200" y="195" font-family="Arial" font-size="14" fill="%23374151" text-anchor="middle">No CT Files</text><text x="200" y="215" font-family="Arial" font-size="12" fill="%236b7280" text-anchor="middle">Upload files</text></svg>'
           ]);
+          setLoadingImages(false);
         }
       } catch (error) {
         console.error('Error loading patient files:', error);
@@ -216,7 +227,6 @@ const PatientDashboardPage: React.FC = () => {
         setCtImages([
           'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">Loading Failed</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Check console for details</text></svg>'
         ]);
-      } finally {
         setLoadingImages(false);
       }
     };
@@ -293,7 +303,8 @@ const PatientDashboardPage: React.FC = () => {
     if (patientFiles.length > 0) {
       const newIndex = (currentFileIndex - 1 + patientFiles.length) % patientFiles.length;
       setCurrentFileIndex(newIndex);
-      setCurrentImageIndex(0); // Reset to first slice of new file
+      // Load images for the new file
+      loadImagesForFile(patientFiles[newIndex].id);
     }
   };
 
@@ -301,7 +312,8 @@ const PatientDashboardPage: React.FC = () => {
     if (patientFiles.length > 0) {
       const newIndex = (currentFileIndex + 1) % patientFiles.length;
       setCurrentFileIndex(newIndex);
-      setCurrentImageIndex(0); // Reset to first slice of new file
+      // Load images for the new file
+      loadImagesForFile(patientFiles[newIndex].id);
     }
   };
 
@@ -1102,7 +1114,8 @@ const PatientDashboardPage: React.FC = () => {
                       onChange={(e) => {
                         const newIndex = parseInt(e.target.value);
                         setCurrentFileIndex(newIndex);
-                        setCurrentImageIndex(0); // Reset to first slice
+                        // Load images for the selected file
+                        loadImagesForFile(patientFiles[newIndex].id);
                       }}
                       className="file-selector-dropdown"
                     >
@@ -1129,6 +1142,24 @@ const PatientDashboardPage: React.FC = () => {
                   </div>
                 ) : ctImages.length > 0 ? (
                   <>
+                    {/* Current File Indicator */}
+                    {patientFiles.length > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        left: '10px',
+                        background: 'rgba(0, 123, 255, 0.9)',
+                        color: 'white',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        zIndex: 10,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                      }}>
+                        📁 {patientFiles[currentFileIndex]?.file_name || 'Loading...'}
+                      </div>
+                    )}
                     <img
                       src={ctImages[currentImageIndex]}
                       alt={`CT Scan ${currentImageIndex + 1}`}
@@ -1314,7 +1345,8 @@ const PatientDashboardPage: React.FC = () => {
                         onChange={(e) => {
                           const newIndex = parseInt(e.target.value);
                           setCurrentFileIndex(newIndex);
-                          setCurrentImageIndex(0);
+                          // Load images for the selected file
+                          loadImagesForFile(patientFiles[newIndex].id);
                         }}
                         className="file-selector-dropdown"
                         style={{ maxWidth: '400px' }}

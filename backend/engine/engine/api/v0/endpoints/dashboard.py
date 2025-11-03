@@ -728,16 +728,18 @@ class PatientImagesResponse(BaseModel):
     message: str
 
 @router.get("/patients/{case_id}/images", response_model=PatientImagesResponse)
-async def get_patient_images(case_id: str) -> PatientImagesResponse:
+async def get_patient_images(case_id: str, file_id: Optional[str] = None) -> PatientImagesResponse:
     """
     Get CT scan images for a specific patient
-    
+
     Args:
         case_id: ID of the patient case
-    
+        file_id: Optional file ID to get images from a specific file only
+
     Returns:
         PatientImagesResponse: List of image URLs
     """
+    print(f"[DEBUG] get_patient_images called with case_id={case_id}, file_id={file_id}")
     try:
         # Find the case
         case_found = None
@@ -760,6 +762,19 @@ async def get_patient_images(case_id: str) -> PatientImagesResponse:
         # Filter to only NIfTI files
         nii_files = [f for f in case_found.files if f.file_name.lower().endswith('.nii') or f.file_name.lower().endswith('.nii.gz')]
 
+        # If file_id is specified, filter to only that file
+        if file_id:
+            nii_files = [f for f in nii_files if f.id == file_id]
+            if not nii_files:
+                print(f"File {file_id} not found for patient {case_id}")
+                return PatientImagesResponse(
+                    success=False,
+                    images=[
+                        f"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23fef2f2'/><circle cx='200' cy='200' r='80' fill='%23fecaca' stroke='%23dc2626' stroke-width='2'/><text x='200' y='190' font-family='Arial' font-size='14' fill='%23dc2626' text-anchor='middle'>File Not Found</text><text x='200' y='210' font-family='Arial' font-size='12' fill='%23dc2626' text-anchor='middle'>File ID: {file_id}</text></svg>"
+                    ],
+                    message=f"File {file_id} not found"
+                )
+
         if not nii_files:
             # No NIfTI files, return placeholder
             sample_images = [
@@ -771,7 +786,7 @@ async def get_patient_images(case_id: str) -> PatientImagesResponse:
             for i, nii_file in enumerate(nii_files):
                 if nii_file.file_path and os.path.exists(nii_file.file_path):
                     # Try to convert actual NIfTI file to multiple slices
-                    print(f"Converting NIfTI file: {nii_file.file_path}")
+                    print(f"Converting NIfTI file: {nii_file.file_path} (file_id: {nii_file.id})")
                     converted_slices = nii_processor.convert_nii_to_base64_slices(nii_file.file_path, axis=2)
 
                     if converted_slices and len(converted_slices) > 0:
