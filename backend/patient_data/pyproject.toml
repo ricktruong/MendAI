@@ -17,6 +17,7 @@ httpx = "^0.28.1"
 google-cloud-bigquery = "^3.38.0"
 google-auth = "^2.34.0"
 requests = "^2.32.0"
+openai = "^2.6.1"
 
 [build-system]
 requires = ["poetry-core"]
