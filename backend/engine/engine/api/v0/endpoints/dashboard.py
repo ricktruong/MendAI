@@ -288,7 +288,8 @@ async def get_patient_list_data() -> DashboardResponse:
                 response = await client.get(f"{PATIENT_DATA_URL}/api/patients/subject_ids")
                 response.raise_for_status()
                 subject_ids_data = response.json()
-                subject_ids = subject_ids_data.get("subject_ids", [])
+                # Fix: API returns 'patient_ids' not 'subject_ids'
+                subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
 
                 # Fetch all patients (no limit)
                 print(f"Fetching {len(subject_ids)} patients from FHIR in parallel...")

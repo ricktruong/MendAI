@@ -166,40 +166,50 @@ def get_patient_subject_ids() -> List[str]:
         # Fetch all patients (paginate if needed)
         all_patient_ids = []
         params = {"_count": "100"}
-        
+
         while True:
-            bundle = search_fhir_resource("Patient", params)
-            patient_ids = [
-                resource.get("id")
-                for resource in unwrap_bundle(bundle)
-                if resource.get("id")
-            ]
-            all_patient_ids.extend(patient_ids)
-            
-            # Check for next page
-            next_link = None
-            for link in bundle.get("link", []):
-                if link.get("relation") == "next":
-                    next_link = link.get("url")
+            try:
+                bundle = search_fhir_resource("Patient", params)
+                patient_ids = [
+                    resource.get("id")
+                    for resource in unwrap_bundle(bundle)
+                    if resource.get("id")
+                ]
+                all_patient_ids.extend(patient_ids)
+
+                # Check for next page
+                next_link = None
+                for link in bundle.get("link", []):
+                    if link.get("relation") == "next":
+                        next_link = link.get("url")
+                        break
+
+                if not next_link:
                     break
-            
-            if not next_link:
-                break
-            
-            # Extract page token for next request
-            if "_page_token=" in next_link:
-                page_token = next_link.split("_page_token=")[1].split("&")[0]
-                params["_page_token"] = page_token
-            else:
-                break
-        
+
+                # Extract page token for next request
+                if "_page_token=" in next_link:
+                    page_token = next_link.split("_page_token=")[1].split("&")[0]
+                    params["_page_token"] = page_token
+                else:
+                    break
+
+            except Exception as page_error:
+                # If pagination fails (e.g., invalid_page_token), return what we have so far
+                if "invalid_page_token" in str(page_error) or "page token" in str(page_error).lower():
+                    print(f"⚠ Pagination stopped due to token error. Returning {len(all_patient_ids)} patients fetched so far.")
+                    break
+                else:
+                    # For other errors, re-raise
+                    raise
+
         # Cache the result
         _patient_list_cache = all_patient_ids
         _patient_list_cache_time = datetime.now()
         print(f"✓ [CACHED] Stored {len(all_patient_ids)} patient IDs (expires in {CACHE_DURATION_MINUTES} min)")
-        
+
         return all_patient_ids
-        
+
     except Exception as e:
         raise Exception(f"Error fetching patient IDs: {str(e)}")
 
