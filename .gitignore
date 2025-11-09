@@ -245,7 +245,11 @@ local/
 *.pptx
 *.ppt
 
+# Documentation (API keys and setup guides)
+docs/
+
 # Specific files to ignore
 Patient Data Service Resources/
-check_fhir.py 
+check_fhir.py
 verify_auth.py
+test_ai_analysis.py

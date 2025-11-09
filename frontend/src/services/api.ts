@@ -435,6 +435,35 @@ class ApiService {
     const response = await fetch(url);
     return await response.json();
   }
+
+  // AI Analysis endpoints
+  async analyzeSlice(
+    patientId: string,
+    fileId: string,
+    sliceNumber: number,
+    totalSlices?: number
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      ...(totalSlices && { total_slices: totalSlices.toString() })
+    });
+    const queryString = params.toString();
+    const endpoint = `/analysis/slice/${patientId}/${fileId}/${sliceNumber}${queryString ? '?' + queryString : ''}`;
+    return await this.makeRequest<any>(endpoint);
+  }
+
+  async analyzeBatch(
+    patientId: string,
+    fileId: string,
+    sliceStart: number,
+    sliceEnd: number
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      slice_start: sliceStart.toString(),
+      slice_end: sliceEnd.toString()
+    });
+    const endpoint = `/analysis/batch/${patientId}/${fileId}?${params.toString()}`;
+    return await this.makeRequest<any>(endpoint);
+  }
 }
 
 // Export singleton instance

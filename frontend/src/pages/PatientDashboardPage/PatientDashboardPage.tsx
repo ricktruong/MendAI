@@ -5,6 +5,8 @@ import { apiService } from '../../services/api';
 import type { Message } from '../../services/api';
 import jsPDF from 'jspdf';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
+import type { SliceAnalysisResponse, BatchAnalysisResponse, Finding, Recommendation } from '../../types/ai-analysis';
+import { getFindingIcon, getFindingColor, getRecommendationIcon, getRecommendationColor } from '../../types/ai-analysis';
 
 // Tab types for the dashboard
 type TabType = 'summary' | 'ct-analysis' | 'ai-results' | 'chat';
@@ -54,13 +56,13 @@ const PatientDashboardPage: React.FC = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // AI Analysis state
-  const [aiResults, setAiResults] = useState<any[]>([]);
+  const [batchAnalysisResult, setBatchAnalysisResult] = useState<BatchAnalysisResponse | null>(null);
   const [loadingAiAnalysis, setLoadingAiAnalysis] = useState(false);
   const [aiAnalysisCompleted, setAiAnalysisCompleted] = useState(false);
   const [generatingReport, setGeneratingReport] = useState(false);
 
   // Real-time slice analysis state
-  const [sliceAnalysis, setSliceAnalysis] = useState<any>(null);
+  const [sliceAnalysis, setSliceAnalysis] = useState<SliceAnalysisResponse | null>(null);
   const [loadingSliceAnalysis, setLoadingSliceAnalysis] = useState(false);
   const [sliceAnalysisError, setSliceAnalysisError] = useState<string | null>(null);
   const [generatedReport, setGeneratedReport] = useState<{ name: string; url: string; size: string } | null>(null);
@@ -458,7 +460,7 @@ const PatientDashboardPage: React.FC = () => {
 
   // AI Analysis function
   const triggerAiAnalysis = async () => {
-    if (loadingAiAnalysis || !patient || ctImages.length === 0) {
+    if (loadingAiAnalysis || !patient || ctImages.length === 0 || patientFiles.length === 0) {
       return;
     }
 
@@ -481,76 +483,24 @@ const PatientDashboardPage: React.FC = () => {
     setLoadingAiAnalysis(true);
 
     try {
-      // Simulate analysis time based on number of slices
-      await new Promise(resolve => setTimeout(resolve, 1500 + sliceCount * 10));
-
-      // Get current file info
       const currentFile = patientFiles[currentFileIndex];
-      const fileName = currentFile?.file_name || 'CT Scan';
 
-      // Generate mock analysis results based on slice range
-      const mockResults = [
-        {
-          id: 1,
-          priority: 'high',
-          icon: '📊',
-          title: 'Analysis Summary',
-          content: `Analyzed ${sliceCount} CT slices (${fromSlice}-${toSlice}) from ${fileName}. The AI system has completed a comprehensive evaluation of the specified region.`,
-          details: [
-            `File: ${fileName}`,
-            `Slices Analyzed: ${fromSlice} to ${toSlice} (${sliceCount} total)`,
-            `Analysis Confidence: ${(88 + Math.random() * 10).toFixed(0)}%`,
-            `Analysis Date: ${new Date().toLocaleString()}`
-          ]
-        },
-        {
-          id: 2,
-          priority: Math.random() > 0.7 ? 'high' : 'medium',
-          icon: '🔍',
-          title: 'Key Findings',
-          content: Math.random() > 0.6
-            ? `• Normal lung parenchyma observed throughout analyzed slices\n• No significant masses or nodules detected\n• Clear airways and vasculature\n• Symmetric bilateral findings`
-            : `• Small nodular opacity noted in right upper lobe (slice ${Math.floor(fromSlice + sliceCount * 0.3)})\n• Recommend follow-up imaging in 3-6 months\n• Otherwise normal lung parenchyma\n• Clear airways observed`,
-          details: [
-            'Lung Fields: Within normal limits',
-            'Mediastinum: Normal size and position',
-            'Bone Structures: No acute abnormalities'
-          ]
-        },
-        {
-          id: 3,
-          priority: 'medium',
-          icon: '💡',
-          title: 'Clinical Recommendations',
-          content: Math.random() > 0.6
-            ? `• Continue routine monitoring\n• No immediate intervention required\n• Annual follow-up CT recommended\n• Maintain current treatment plan if applicable`
-            : `• Follow-up CT scan in 3-6 months\n• Correlate with clinical symptoms\n• Consider pulmonology consultation\n• Document any changes in patient condition`,
-          details: [
-            'Urgency: Routine',
-            'Suggested Follow-up: 3-12 months',
-            'Additional Tests: As clinically indicated'
-          ]
-        }
-      ];
+      // Call the real API endpoint
+      const result = await apiService.analyzeBatch(
+        patient.id,
+        currentFile.id,
+        fromSlice,
+        toSlice
+      );
 
-      setAiResults(mockResults);
+      console.log('Batch analysis result:', result);
+      setBatchAnalysisResult(result);
       setAiAnalysisCompleted(true);
 
     } catch (error) {
       console.error('AI Analysis failed:', error);
-      setAiResults([
-        {
-          id: 1,
-          priority: 'medium',
-          icon: '⚠️',
-          title: 'Analysis Error',
-          content: 'Unable to complete analysis. Please try again.',
-          details: [
-            'Status: Error',
-            'Timestamp: ' + new Date().toLocaleString()
-          ]
-        }
-      ]);
+      alert(`Analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setAiAnalysisCompleted(false);
     } finally {
       setLoadingAiAnalysis(false);
     }
@@ -563,7 +513,7 @@ const PatientDashboardPage: React.FC = () => {
 
   // Real-time slice analysis function
   const analyzeCurrentSlice = async () => {
-    if (!patient || ctImages.length === 0 || loadingSliceAnalysis) {
+    if (!patient || ctImages.length === 0 || loadingSliceAnalysis || patientFiles.length === 0) {
       return;
     }
 
@@ -571,54 +521,22 @@ const PatientDashboardPage: React.FC = () => {
     setSliceAnalysisError(null);
 
     try {
-      // Generate synthetic analysis based on slice position
-      const position = currentImageIndex / ctImages.length;
-      const sliceType = position < 0.3 ? 'upper' : position < 0.7 ? 'middle' : 'lower';
+      const currentFile = patientFiles[currentFileIndex];
 
-      // Randomize findings based on slice position
-      const findingsOptions = [
-        {
-          type: 'Normal',
-          description: 'No significant abnormalities detected in this slice',
-          confidence: 0.85 + Math.random() * 0.12
-        },
-        {
-          type: 'Normal',
-          description: 'Lung parenchyma appears normal with clear visualization',
-          confidence: 0.88 + Math.random() * 0.1
-        },
-        {
-          type: 'Abnormal',
-          description: 'Small nodular opacity detected, recommend follow-up',
-          confidence: 0.72 + Math.random() * 0.15
-        },
-        {
-          type: 'Suspicious',
-          description: 'Subtle density changes noted, further evaluation needed',
-          confidence: 0.65 + Math.random() * 0.15
-        }
-      ];
+      // Call the real API endpoint
+      const result = await apiService.analyzeSlice(
+        patient.id,
+        currentFile.id,
+        currentImageIndex + 1,
+        ctImages.length
+      );
 
-      // Select findings based on position (mostly normal)
-      const selectedFindings = Math.random() > 0.7
-        ? [findingsOptions[Math.floor(Math.random() * findingsOptions.length)]]
-        : [findingsOptions[0]];
-
-      const mockAnalysis = {
-        slice_number: currentImageIndex + 1,
-        total_slices: ctImages.length,
-        anatomical_region: sliceType === 'upper' ? 'Upper Thorax' :
-                          sliceType === 'middle' ? 'Mid Thorax' : 'Lower Thorax',
-        findings: selectedFindings,
-        quality_score: 0.85 + Math.random() * 0.13,
-        timestamp: new Date().toISOString()
-      };
-
-      setSliceAnalysis(mockAnalysis);
+      console.log('Slice analysis result:', result);
+      setSliceAnalysis(result);
       setSliceAnalysisError(null);
     } catch (error) {
       console.error('Slice analysis error:', error);
-      setSliceAnalysisError('Unable to analyze slice');
+      setSliceAnalysisError(error instanceof Error ? error.message : 'Unable to analyze slice');
     } finally {
       setLoadingSliceAnalysis(false);
     }
@@ -626,7 +544,7 @@ const PatientDashboardPage: React.FC = () => {
 
   // Generate PDF Report function
   const generatePdfReport = async () => {
-    if (generatingReport || !patient || !aiAnalysisCompleted || aiResults.length === 0) {
+    if (generatingReport || !patient || !aiAnalysisCompleted || !batchAnalysisResult) {
       return;
     }
 
@@ -636,64 +554,93 @@ const PatientDashboardPage: React.FC = () => {
       // Simulate API call for PDF generation
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Create PDF using jsPDF with simpler approach
+      // Create PDF using jsPDF
       const doc = new jsPDF();
-      
+
       // Title
       doc.setFontSize(18);
       doc.text('MendAI - AI Analysis Report', 20, 30);
-      
+
       // Patient Information
       doc.setFontSize(14);
       doc.text('Patient Information:', 20, 50);
-      
+
       doc.setFontSize(11);
       let y = 65;
       doc.text(`Patient Name: ${patient.patientName || patient.patient_name}`, 25, y);
       doc.text(`Patient ID: ${patient.id}`, 25, y + 10);
-      doc.text(`File Name: ${patient.fileName || 'No file'}`, 25, y + 20);
-      doc.text(`Upload Date: ${patient.uploadedAt}`, 25, y + 30);
+      doc.text(`File Name: ${batchAnalysisResult.metadata.file_name}`, 25, y + 20);
+      doc.text(`Slices Analyzed: ${batchAnalysisResult.metadata.slice_range.start} - ${batchAnalysisResult.metadata.slice_range.end}`, 25, y + 30);
       doc.text(`Report Generated: ${new Date().toLocaleString()}`, 25, y + 40);
-      
-      // AI Analysis Results
+
+      // Overall Summary
       y += 60;
       doc.setFontSize(14);
-      doc.text('AI Analysis Results:', 20, y);
-      
-      y += 15;
+      doc.text('Overall Summary:', 20, y);
+      y += 10;
       doc.setFontSize(11);
-      aiResults.forEach((result, index) => {
+      const maxWidth = 150;
+      const summaryLines = doc.splitTextToSize(batchAnalysisResult.overall_summary.content, maxWidth);
+      doc.text(summaryLines, 25, y);
+      y += summaryLines.length * 6 + 10;
+
+      // Findings
+      doc.setFontSize(14);
+      doc.text('Key Findings:', 20, y);
+      y += 10;
+
+      doc.setFontSize(11);
+      batchAnalysisResult.findings.forEach((finding, index) => {
         if (y > 250) {
           doc.addPage();
           y = 30;
         }
-        
+
         doc.setFontSize(12);
-        doc.text(`${index + 1}. ${result.title}`, 25, y);
-        y += 10;
-        
-        doc.setFontSize(10);
-        doc.text(`Priority: ${result.priority}`, 30, y);
+        doc.text(`${index + 1}. ${finding.title}`, 25, y);
         y += 8;
-        
-        // Split long text into multiple lines
-        const maxWidth = 150;
-        const contentLines = doc.splitTextToSize(result.content, maxWidth);
-        doc.text(contentLines, 30, y);
-        y += contentLines.length * 6 + 5;
-        
-        if (result.details && result.details.length > 0) {
-          doc.text('Details:', 30, y);
-          y += 6;
-          result.details.forEach((detail: string) => {
-            const detailLines = doc.splitTextToSize(`- ${detail}`, maxWidth - 10);
-            doc.text(detailLines, 35, y);
-            y += detailLines.length * 5;
-          });
-        }
-        y += 10;
+
+        doc.setFontSize(10);
+        doc.text(`Type: ${finding.type} | Severity: ${finding.severity} | Confidence: ${Math.round(finding.confidence * 100)}%`, 30, y);
+        y += 8;
+
+        const descLines = doc.splitTextToSize(finding.description, maxWidth - 10);
+        doc.text(descLines, 30, y);
+        y += descLines.length * 5 + 8;
       });
-      
+
+      // Recommendations
+      if (batchAnalysisResult.recommendations.length > 0) {
+        if (y > 200) {
+          doc.addPage();
+          y = 30;
+        }
+
+        doc.setFontSize(14);
+        doc.text('Recommendations:', 20, y);
+        y += 10;
+
+        doc.setFontSize(11);
+        batchAnalysisResult.recommendations.forEach((rec, index) => {
+          if (y > 250) {
+            doc.addPage();
+            y = 30;
+          }
+
+          doc.setFontSize(12);
+          doc.text(`${index + 1}. ${rec.title}`, 25, y);
+          y += 8;
+
+          doc.setFontSize(10);
+          doc.text(`Priority: ${rec.priority} | Urgency: ${rec.urgency}`, 30, y);
+          y += 6;
+
+          const recLines = doc.splitTextToSize(rec.description, maxWidth - 10);
+          doc.text(recLines, 30, y);
+          y += recLines.length * 5 + 8;
+        });
+      }
+
       // Footer
       if (y > 250) {
         doc.addPage();
@@ -701,7 +648,7 @@ const PatientDashboardPage: React.FC = () => {
       }
       doc.setFontSize(9);
       doc.text('Generated by MendAI System', 20, y + 20);
-      doc.text(`Report ID: RPT-${Date.now()}`, 20, y + 30);
+      doc.text(`Model Version: ${batchAnalysisResult.metadata.model_version}`, 20, y + 30);
 
       // Generate blob and download info
       const pdfBlob = doc.output('blob');
@@ -1303,23 +1250,62 @@ const PatientDashboardPage: React.FC = () => {
                 {sliceAnalysis && !loadingSliceAnalysis && (
                   <div className="analysis-results">
                     <div className="analysis-header">
-                      <span className="analysis-label">Slice {sliceAnalysis.slice_number}</span>
-                      <span className="analysis-region">{sliceAnalysis.anatomical_region}</span>
+                      <span className="analysis-label">Slice {sliceAnalysis.metadata.slice_number}</span>
+                      <span className="analysis-region">{sliceAnalysis.metadata.anatomical_region}</span>
                     </div>
 
+                    {/* Quality Assessment */}
+                    <div style={{ marginBottom: '12px', fontSize: '0.85rem', color: '#6b7280' }}>
+                      Quality Score: {Math.round(sliceAnalysis.quality_assessment.score * 100)}%
+                    </div>
+
+                    {/* Summary */}
+                    <div style={{ marginBottom: '12px', padding: '10px', backgroundColor: '#f0f9ff', borderRadius: '6px', fontSize: '0.875rem' }}>
+                      {sliceAnalysis.summary}
+                    </div>
+
+                    {/* Findings */}
                     <div className="findings-section">
                       <span className="findings-label">Findings</span>
-                      {sliceAnalysis.findings && sliceAnalysis.findings.map((finding: any, idx: number) => (
-                        <div key={idx} className="finding-item">
-                          <span className={`finding-type ${finding.type.toLowerCase()}`}>
-                            {finding.type}
-                          </span>
-                          <span className="finding-desc">{finding.description}</span>
-                          <span className="finding-confidence">
-                            {Math.round(finding.confidence * 100)}%
-                          </span>
+                      {sliceAnalysis.findings && sliceAnalysis.findings.map((finding: Finding, idx: number) => (
+                        <div key={finding.id || idx} className="finding-item" style={{ marginBottom: '10px', borderLeft: `3px solid ${getFindingColor(finding)}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '1.2rem' }}>{getFindingIcon(finding)}</span>
+                            <span className={`finding-type ${finding.type.toLowerCase()}`} style={{
+                              fontWeight: 'bold',
+                              color: getFindingColor(finding)
+                            }}>
+                              {finding.title}
+                            </span>
+                            <span className="finding-confidence" style={{
+                              marginLeft: 'auto',
+                              fontSize: '0.75rem',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              backgroundColor: finding.confidence > 0.8 ? '#d1fae5' : '#fed7aa',
+                              color: finding.confidence > 0.8 ? '#065f46' : '#92400e'
+                            }}>
+                              {Math.round(finding.confidence * 100)}%
+                            </span>
+                          </div>
+                          <div className="finding-desc" style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '6px' }}>
+                            {finding.description}
+                          </div>
+                          {finding.supporting_evidence && finding.supporting_evidence.length > 0 && (
+                            <div style={{ fontSize: '0.75rem', color: '#6b7280', paddingLeft: '12px' }}>
+                              {finding.supporting_evidence.map((evidence, i) => (
+                                <div key={i}>• {evidence}</div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ))}
+                    </div>
+
+                    {/* Processing Info */}
+                    <div style={{ marginTop: '12px', fontSize: '0.7rem', color: '#9ca3af', textAlign: 'center' }}>
+                      Model: {sliceAnalysis.metadata.model_version} |
+                      Processing time: {sliceAnalysis.metadata.processing_time_ms}ms
                     </div>
                   </div>
                 )}
@@ -1404,7 +1390,7 @@ const PatientDashboardPage: React.FC = () => {
             </div>
 
             {/* Generate Report Button - Centered */}
-            {aiResults.length > 0 && (
+            {batchAnalysisResult && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <button
                   className="generate-report-btn"
@@ -1445,27 +1431,152 @@ const PatientDashboardPage: React.FC = () => {
                   <p>This may take a few moments.</p>
                 </div>
               </div>
-            ) : aiResults.length > 0 ? (
-              <div className="results-grid">
-                {aiResults.map((result) => (
-                  <div key={result.id} className={`result-card priority-${result.priority}`}>
-                    <div className="result-header">
-                      <span className="result-icon">{result.icon}</span>
-                      <h3>{result.title}</h3>
-                      <span className={`priority-badge ${result.priority}`}>
-                        {result.priority.charAt(0).toUpperCase() + result.priority.slice(1)} Priority
-                      </span>
-                    </div>
-                    <div className="result-content">
-                      <p style={{ whiteSpace: 'pre-line' }}>{result.content}</p>
-                      <div className="result-details">
-                        {result.details.map((detail: string, index: number) => (
-                          <span key={index}>{detail}</span>
-                        ))}
-                      </div>
+            ) : batchAnalysisResult ? (
+              <div className="results-container">
+                {/* Overall Summary */}
+                <div className="result-card summary-card" style={{ marginBottom: '20px', backgroundColor: '#f0f9ff', border: '2px solid #3b82f6' }}>
+                  <div className="result-header">
+                    <h3>{batchAnalysisResult.overall_summary.title}</h3>
+                    <span className={`priority-badge ${batchAnalysisResult.overall_summary.urgency}`} style={{
+                      backgroundColor: batchAnalysisResult.overall_summary.urgency === 'immediate' ? '#fee2e2' :
+                                     batchAnalysisResult.overall_summary.urgency === 'urgent' ? '#fed7aa' :
+                                     batchAnalysisResult.overall_summary.urgency === 'routine' ? '#dbeafe' : '#d1fae5',
+                      color: batchAnalysisResult.overall_summary.urgency === 'immediate' ? '#991b1b' :
+                             batchAnalysisResult.overall_summary.urgency === 'urgent' ? '#92400e' :
+                             batchAnalysisResult.overall_summary.urgency === 'routine' ? '#1e40af' : '#065f46'
+                    }}>
+                      {batchAnalysisResult.overall_summary.urgency.charAt(0).toUpperCase() + batchAnalysisResult.overall_summary.urgency.slice(1)}
+                    </span>
+                  </div>
+                  <div className="result-content">
+                    <p>{batchAnalysisResult.overall_summary.content}</p>
+                    <div style={{ marginTop: '10px', fontSize: '0.85rem', color: '#6b7280' }}>
+                      <strong>Analysis Details:</strong> {batchAnalysisResult.metadata.slice_range.total_analyzed} slices analyzed
+                      (#{batchAnalysisResult.metadata.slice_range.start} - #{batchAnalysisResult.metadata.slice_range.end}) •
+                      Confidence: {Math.round(batchAnalysisResult.overall_summary.confidence * 100)}%
                     </div>
                   </div>
-                ))}
+                </div>
+
+                {/* Findings */}
+                <h3 style={{ marginBottom: '15px' }}>Key Findings</h3>
+                <div className="results-grid" style={{ marginBottom: '30px' }}>
+                  {batchAnalysisResult.findings.map((finding: Finding) => (
+                    <div key={finding.id} className="result-card" style={{
+                      borderLeft: `4px solid ${getFindingColor(finding)}`
+                    }}>
+                      <div className="result-header">
+                        <span className="result-icon" style={{ fontSize: '1.5rem' }}>{getFindingIcon(finding)}</span>
+                        <h3>{finding.title}</h3>
+                        <span className={`priority-badge ${finding.severity}`} style={{
+                          backgroundColor: finding.severity === 'critical' || finding.severity === 'severe' ? '#fee2e2' :
+                                         finding.severity === 'moderate' ? '#fed7aa' :
+                                         finding.severity === 'mild' ? '#dbeafe' : '#d1fae5',
+                          color: finding.severity === 'critical' || finding.severity === 'severe' ? '#991b1b' :
+                                 finding.severity === 'moderate' ? '#92400e' :
+                                 finding.severity === 'mild' ? '#1e40af' : '#065f46'
+                        }}>
+                          {finding.severity}
+                        </span>
+                      </div>
+                      <div className="result-content">
+                        <div style={{ marginBottom: '10px' }}>
+                          <span style={{ fontWeight: 'bold', color: getFindingColor(finding) }}>
+                            {finding.type.toUpperCase()}
+                          </span>
+                          {' • '}
+                          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            Category: {finding.category.replace('_', ' ')}
+                          </span>
+                          {' • '}
+                          <span style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+                            Confidence: {Math.round(finding.confidence * 100)}%
+                          </span>
+                        </div>
+                        <p>{finding.description}</p>
+                        {finding.slice_locations && finding.slice_locations.length > 0 && (
+                          <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#6b7280' }}>
+                            <strong>Visible in slices:</strong> {finding.slice_locations.slice(0, 10).join(', ')}
+                            {finding.slice_locations.length > 10 && '...'}
+                          </div>
+                        )}
+                        {finding.supporting_evidence && finding.supporting_evidence.length > 0 && (
+                          <div className="result-details" style={{ marginTop: '10px' }}>
+                            <strong>Supporting Evidence:</strong>
+                            {finding.supporting_evidence.map((evidence, index) => (
+                              <span key={index}>• {evidence}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Recommendations */}
+                {batchAnalysisResult.recommendations && batchAnalysisResult.recommendations.length > 0 && (
+                  <>
+                    <h3 style={{ marginBottom: '15px' }}>Clinical Recommendations</h3>
+                    <div className="results-grid">
+                      {batchAnalysisResult.recommendations.map((rec: Recommendation) => (
+                        <div key={rec.id} className="result-card" style={{
+                          borderLeft: `4px solid ${getRecommendationColor(rec)}`
+                        }}>
+                          <div className="result-header">
+                            <span className="result-icon" style={{ fontSize: '1.5rem' }}>{getRecommendationIcon(rec)}</span>
+                            <h3>{rec.title}</h3>
+                            <span className={`priority-badge ${rec.priority}`} style={{
+                              backgroundColor: rec.priority === 'urgent' ? '#fee2e2' :
+                                             rec.priority === 'high' ? '#fed7aa' :
+                                             rec.priority === 'routine' ? '#dbeafe' : '#d1fae5',
+                              color: rec.priority === 'urgent' ? '#991b1b' :
+                                     rec.priority === 'high' ? '#92400e' :
+                                     rec.priority === 'routine' ? '#1e40af' : '#065f46'
+                            }}>
+                              {rec.priority} Priority
+                            </span>
+                          </div>
+                          <div className="result-content">
+                            <div style={{ marginBottom: '10px', fontSize: '0.85rem', color: '#6b7280' }}>
+                              <span><strong>Category:</strong> {rec.category.replace('_', ' ')}</span>
+                              {' • '}
+                              <span><strong>Urgency:</strong> {rec.urgency}</span>
+                              {rec.timeframe && (
+                                <>
+                                  {' • '}
+                                  <span><strong>Timeframe:</strong> {rec.timeframe.replace('_', ' ')}</span>
+                                </>
+                              )}
+                            </div>
+                            <p>{rec.description}</p>
+                            <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#f9fafb', borderRadius: '6px', fontSize: '0.85rem' }}>
+                              <strong>Rationale:</strong> {rec.rationale}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Differential Diagnosis */}
+                {batchAnalysisResult.differential_diagnosis && batchAnalysisResult.differential_diagnosis.length > 0 && (
+                  <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                    <h4 style={{ marginTop: 0 }}>Differential Diagnosis</h4>
+                    <ul style={{ marginBottom: 0 }}>
+                      {batchAnalysisResult.differential_diagnosis.map((diagnosis, index) => (
+                        <li key={index}>{diagnosis}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Metadata */}
+                <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f3f4f6', borderRadius: '6px', fontSize: '0.8rem', color: '#6b7280', textAlign: 'center' }}>
+                  Model: {batchAnalysisResult.metadata.model_version} |
+                  Processing time: {batchAnalysisResult.metadata.processing_time_ms}ms |
+                  Analysis completed: {new Date(batchAnalysisResult.metadata.timestamp).toLocaleString()}
+                </div>
               </div>
             ) : (
               <div className="ai-empty">
