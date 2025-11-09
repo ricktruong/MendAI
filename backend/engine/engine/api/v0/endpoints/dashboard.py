@@ -450,19 +450,19 @@ async def update_patient(
     case_id: str,
     patient_name: str = Form(...),
     uploaded_at: str = Form(...),
-    file: Optional[UploadFile] = File(None),
+    file: Optional[List[UploadFile]] = File(None),
     delete_file: Optional[str] = Form(None)
 ) -> UpdatePatientResponse:
     """
     Update an existing patient
-    
+
     Args:
         case_id: ID of the case to update
         patient_name: New patient name
         uploaded_at: New date
-        file: Optional new file upload
+        file: Optional list of new file uploads (supports multiple files)
         delete_file: Optional flag to delete the file (set to 'true' to delete)
-    
+
     Returns:
         UpdatePatientResponse: Success response with updated case data
     """
@@ -509,36 +509,43 @@ async def update_patient(
                     updated_case.uploaded_at = updated_case.files[0].uploaded_at
                 else:
                     updated_case.file_name = ""
-        elif file and file.filename:
-            # Add new file to the patient's file list (preserve existing files)
-            # Validate file extension
-            if not (file.filename.lower().endswith('.nii') or file.filename.lower().endswith('.nii.gz')):
-                raise HTTPException(status_code=400, detail="Only .nii or .nii.gz files are supported")
-
-            # Save uploaded file to disk
-            file_content = await file.read()
-            saved_file_path = nii_processor.save_uploaded_file(file_content, file.filename)
-            print(f"Saved updated NIfTI file: {saved_file_path}")
-
-            # Generate new file ID
-            existing_file_count = len(updated_case.files) if updated_case.files else 0
-            new_file_id = f"file-{case_id}-{existing_file_count + 1}"
-
-            # Create new file record
-            new_file = PatientFile(
-                id=new_file_id,
-                file_name=file.filename,
-                uploaded_at=uploaded_at,
-                file_path=saved_file_path
-            )
-
-            # Add to files list
+        elif file and len(file) > 0:
+            # Add new files to the patient's file list (preserve existing files)
+            # Initialize files list if it doesn't exist
             if not updated_case.files:
                 updated_case.files = []
-            updated_case.files.append(new_file)
 
-            # Update primary file reference to the newest file
-            updated_case.file_name = file.filename
+            existing_file_count = len(updated_case.files)
+
+            # Process each uploaded file
+            for upload_file in file:
+                if upload_file.filename:
+                    # Validate file extension
+                    if not (upload_file.filename.lower().endswith('.nii') or upload_file.filename.lower().endswith('.nii.gz')):
+                        raise HTTPException(status_code=400, detail=f"Only .nii or .nii.gz files are supported. Got: {upload_file.filename}")
+
+                    # Save uploaded file to disk
+                    file_content = await upload_file.read()
+                    saved_file_path = nii_processor.save_uploaded_file(file_content, upload_file.filename)
+                    print(f"Saved updated NIfTI file: {saved_file_path}")
+
+                    # Generate new file ID
+                    existing_file_count += 1
+                    new_file_id = f"file-{case_id}-{existing_file_count}"
+
+                    # Create new file record
+                    new_file = PatientFile(
+                        id=new_file_id,
+                        file_name=upload_file.filename,
+                        uploaded_at=uploaded_at,
+                        file_path=saved_file_path
+                    )
+
+                    # Add to files list
+                    updated_case.files.append(new_file)
+
+                    # Update primary file reference to the newest file
+                    updated_case.file_name = upload_file.filename
 
         # Persist to file
         save_stored_cases(stored_cases)

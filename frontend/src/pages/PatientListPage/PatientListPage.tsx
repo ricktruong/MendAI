@@ -60,6 +60,7 @@ const PatientListPage: React.FC = () => {
   });
   const [deletePatientId, setDeletePatientId] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [deleteFile, setDeleteFile] = useState(false);
   const [currentPatientFiles, setCurrentPatientFiles] = useState<PatientFile[]>([]);
   const [viewingPatient, setViewingPatient] = useState<CtCase | null>(null);
@@ -328,6 +329,7 @@ const PatientListPage: React.FC = () => {
     });
     setDeletePatientId('');
     setSelectedFile(null);
+    setSelectedFiles([]);
     setDeleteFile(false);
     setCurrentPatientFiles([]);
     setViewingPatient(null);
@@ -346,11 +348,15 @@ const PatientListPage: React.FC = () => {
       const file = e.target.files[0];
       setSelectedFile(file);
       setDeleteFile(false); // Reset delete file flag when new file is selected
+      // Add file to selectedFiles array without replacing existing ones
+      setSelectedFiles(prev => [...prev, file]);
       setNewPatient(prev => ({
         ...prev,
         fileName: file.name
       }));
     }
+    // Reset the input value to allow selecting the same file again
+    e.target.value = '';
   };
 
 
@@ -427,6 +433,7 @@ const PatientListPage: React.FC = () => {
       });
       setDeleteFile(false);
       setSelectedFile(null);
+      setSelectedFiles([]);
       setViewingPatient(patient);
 
       // Load current files for the patient
@@ -463,7 +470,7 @@ const PatientListPage: React.FC = () => {
 
   const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!editPatient.patientName.trim()) {
       alert('Please enter a patient name');
       return;
@@ -471,17 +478,20 @@ const PatientListPage: React.FC = () => {
 
     try {
       setIsLoading(true);
-      
+
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('patient_name', editPatient.patientName);
       formData.append('uploaded_at', editPatient.uploadedAt);
-      
+
       if (deleteFile) {
         // Indicate to backend that file should be deleted
         formData.append('delete_file', 'true');
-      } else if (selectedFile) {
-        formData.append('file', selectedFile);
+      } else if (selectedFiles.length > 0) {
+        // Append all selected files
+        selectedFiles.forEach((file) => {
+          formData.append('file', file);
+        });
       }
 
       // Call backend API
@@ -1341,30 +1351,74 @@ const PatientListPage: React.FC = () => {
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
-                        marginRight: '10px'
+                        marginBottom: '10px'
                       }}
                     >
-                      {selectedFile ? `📎 ${selectedFile.name}` : ' Choose File'}
+                      Choose File
                     </button>
-                    {selectedFile && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedFile(null)}
-                        style={{
-                          backgroundColor: '#6b7280',
-                          color: 'white',
-                          border: 'none',
-                          padding: '8px 12px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        Clear
-                      </button>
+
+                    {/* Display selected files to be uploaded */}
+                    {selectedFiles.length > 0 && (
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '10px',
+                        backgroundColor: '#f0f9ff',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '4px'
+                      }}>
+                        <h5 style={{ margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 'bold', color: '#1e40af' }}>
+                          Files to Upload ({selectedFiles.length})
+                        </h5>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {selectedFiles.map((file, index) => (
+                            <div key={index} style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '4px 8px',
+                              backgroundColor: 'white',
+                              borderRadius: '3px',
+                              fontSize: '0.8rem'
+                            }}>
+                              <span style={{ color: '#374151' }}>📎 {file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
+                                style={{
+                                  backgroundColor: '#ef4444',
+                                  color: 'white',
+                                  border: 'none',
+                                  padding: '2px 6px',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.7rem'
+                                }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFiles([])}
+                          style={{
+                            marginTop: '8px',
+                            backgroundColor: '#6b7280',
+                            color: 'white',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          Clear All
+                        </button>
+                      </div>
                     )}
                     <p className="file-hint" style={{ margin: '8px 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                      Only NIfTI (.nii or .nii.gz) files are supported for CT analysis. New files will be added to existing files.
+                      Only NIfTI (.nii or .nii.gz) files are supported for CT analysis. Click "Choose File" multiple times to add multiple files.
                     </p>
                   </div>
                 </div>
