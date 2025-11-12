@@ -103,162 +103,10 @@ const PatientListPage: React.FC = () => {
     } catch (err) {
       console.error('Error loading patient list data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load patient list data');
-      
-      // Fallback to mock data with normalized patient format
-      const fallbackCases = [
-        {
-          id: '14889227',
-          fhirId: '07962bbc-98bf-5586-9988-603d6414295c',
-          patientName: 'Sarah Johnson',
-          birthDate: '1978-01-16',
-          gender: 'female',
-          race: 'White',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'M',
-          managingOrganization: 'Beth Israel Deaconess Medical Center',
-          fileName: 'CT_Head_001.nii',
-          uploadedAt: '2025-09-28',
-          language: 'en',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889228',
-          fhirId: 'a1b2c3d4-5678-9abc-def0-123456789abc',
-          patientName: 'Michael Chen',
-          birthDate: '1965-05-22',
-          gender: 'male',
-          race: 'Asian',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'M',
-          managingOrganization: 'Massachusetts General Hospital',
-          fileName: 'CT_Chest_045.nii',
-          uploadedAt: '2025-09-27',
-          language: 'en',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889229',
-          fhirId: 'b2c3d4e5-6789-0abc-def1-234567890bcd',
-          patientName: 'Maria Garcia',
-          birthDate: '1992-11-03',
-          gender: 'female',
-          race: 'Other',
-          ethnicity: 'Hispanic or Latino',
-          maritalStatus: 'S',
-          managingOrganization: 'Boston Medical Center',
-          fileName: 'CT_Abdomen_102.nii',
-          uploadedAt: '2025-09-26',
-          language: 'es',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889230',
-          fhirId: 'c3d4e5f6-7890-1bcd-ef12-34567890cdef',
-          patientName: 'James Williams',
-          birthDate: '1955-07-14',
-          gender: 'male',
-          race: 'Black or African American',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'W',
-          managingOrganization: 'Brigham and Women\'s Hospital',
-          fileName: 'CT_Brain_Trauma_003.nii',
-          uploadedAt: '2025-09-25',
-          language: 'en',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889231',
-          fhirId: 'd4e5f6g7-8901-2cde-f123-4567890defgh',
-          patientName: 'Emily Rodriguez',
-          birthDate: '1980-03-28',
-          gender: 'female',
-          race: 'White',
-          ethnicity: 'Hispanic or Latino',
-          maritalStatus: 'D',
-          managingOrganization: 'Tufts Medical Center',
-          fileName: 'CT_Spine_067.nii',
-          uploadedAt: '2025-09-24',
-          language: 'en',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889232',
-          fhirId: 'e5f6g7h8-9012-3def-1234-567890efghij',
-          patientName: 'David Kim',
-          birthDate: '1970-12-10',
-          gender: 'male',
-          race: 'Asian',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'M',
-          managingOrganization: 'Beth Israel Deaconess Medical Center',
-          fileName: 'CT_Thorax_089.nii',
-          uploadedAt: '2025-09-23',
-          language: 'ko',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889233',
-          fhirId: 'f6g7h8i9-0123-4efg-2345-67890fghijk1',
-          patientName: 'Jennifer Washington',
-          birthDate: '1988-08-19',
-          gender: 'female',
-          race: 'Black or African American',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'S',
-          managingOrganization: 'Boston Children\'s Hospital',
-          fileName: 'CT_Pelvis_045.nii',
-          uploadedAt: '2025-09-22',
-          language: 'en',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889234',
-          fhirId: 'g7h8i9j0-1234-5fgh-3456-7890ghijkl12',
-          patientName: 'Robert Patel',
-          birthDate: '1963-04-07',
-          gender: 'male',
-          race: 'Asian',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'M',
-          managingOrganization: 'Massachusetts General Hospital',
-          fileName: 'CT_Neck_034.nii',
-          uploadedAt: '2025-09-21',
-          language: 'hi',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889235',
-          fhirId: 'h8i9j0k1-2345-6ghi-4567-890hijklm123',
-          patientName: 'Linda Martinez',
-          birthDate: '1975-09-15',
-          gender: 'female',
-          race: 'White',
-          ethnicity: 'Hispanic or Latino',
-          maritalStatus: 'M',
-          managingOrganization: 'Lahey Hospital & Medical Center',
-          fileName: 'CT_Sinus_012.nii',
-          uploadedAt: '2025-09-20',
-          language: 'es',
-          deceasedDateTime: null
-        },
-        {
-          id: '14889236',
-          fhirId: 'i9j0k1l2-3456-7hij-5678-90ijklmn1234',
-          patientName: 'Thomas Anderson',
-          birthDate: '1982-06-25',
-          gender: 'male',
-          race: 'White',
-          ethnicity: 'Not Hispanic or Latino',
-          maritalStatus: 'S',
-          managingOrganization: 'Beth Israel Deaconess Medical Center',
-          fileName: 'CT_Cardiac_078.nii',
-          uploadedAt: '2025-09-19',
-          language: 'en',
-          deceasedDateTime: null
-        },
-      ];
-      setCtCases(fallbackCases);
-      setFilteredCases(fallbackCases);
+
+      // No fallback data - show error to user
+      setCtCases([]);
+      setFilteredCases([]);
     } finally {
       setIsLoading(false);
     }
@@ -502,11 +350,21 @@ const PatientListPage: React.FC = () => {
         const updatedCases = ctCases.map(c =>
           c.id === editPatient.id
             ? {
+                ...c,  // Keep all existing fields
                 id: response.case.id,
                 patientName: response.case.patient_name,
                 fileName: response.case.file_name,
                 uploadedAt: response.case.uploaded_at,
-                files: response.case.files || []
+                files: response.case.files || [],
+                // Update FHIR fields if provided
+                fhirId: response.case.fhirId ?? c.fhirId,
+                birthDate: response.case.birthDate ?? c.birthDate,
+                gender: response.case.gender ?? c.gender,
+                race: response.case.race ?? c.race,
+                ethnicity: response.case.ethnicity ?? c.ethnicity,
+                maritalStatus: response.case.maritalStatus ?? c.maritalStatus,
+                managingOrganization: response.case.managingOrganization ?? c.managingOrganization,
+                language: response.case.language ?? c.language
               }
             : c
         );

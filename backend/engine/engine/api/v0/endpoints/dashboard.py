@@ -262,8 +262,8 @@ _default_cases = [
     ),
 ]
 
-# Load persisted cases or use defaults
-stored_cases = load_stored_cases() or _default_cases
+# Load persisted cases (no default fallback - real patients only)
+stored_cases = load_stored_cases() or []
 
 # 2. Patient List Page (formerly Dashboard Page)
 @router.get("/dashboard", response_model=DashboardResponse)
@@ -361,16 +361,14 @@ async def get_patient_list_data() -> DashboardResponse:
                 patients = []
 
                 print(f"Successfully loaded {len(recent_cases)} patients from FHIR")
-                if len(recent_cases) == 0:
-                    print("No patients loaded, falling back to stored_cases")
-                    return DashboardResponse(patients=[], recent_cases=stored_cases)
+                # Return whatever FHIR gave us, even if empty (no fallback to stored_cases)
 
                 return DashboardResponse(patients=patients, recent_cases=recent_cases)
 
             except httpx.HTTPError as e:
                 print(f"Error connecting to patient_data service: {e}")
-                # Fallback to stored_cases if service is unavailable
-                return DashboardResponse(patients=[], recent_cases=stored_cases)
+                # Return empty list if service is unavailable (no fallback to stored_cases)
+                return DashboardResponse(patients=[], recent_cases=[])
 
     except Exception as e:
         print(f"Internal server error: {e}")
