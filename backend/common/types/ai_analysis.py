@@ -170,4 +170,7 @@ class BatchAnalysisRequest(BaseModel):
     file_id: str
     slice_start: int
     slice_end: int
+    image_slices: Optional[List[str]] = Field(
+        None, description="List of base64 encoded images for the slice range"
+    )
     priority: Optional[str] = Field("routine", description="Analysis priority")

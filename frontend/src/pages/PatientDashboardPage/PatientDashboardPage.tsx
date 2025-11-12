@@ -485,12 +485,54 @@ const PatientDashboardPage: React.FC = () => {
     try {
       const currentFile = patientFiles[currentFileIndex];
 
-      // Call the real API endpoint
+      // Extract base64 data for all slices in the range
+      console.log(`Extracting image data for ${sliceCount} slices...`);
+      const imageSlices: string[] = [];
+
+      for (let i = fromSlice - 1; i < toSlice; i++) {
+        const imageUrl = ctImages[i];
+        let imageData = '';
+
+        if (imageUrl.startsWith('data:image')) {
+          // Extract base64 data from data URL
+          const base64Match = imageUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
+          if (base64Match && base64Match[1]) {
+            imageData = base64Match[1];
+          }
+        } else {
+          // If it's a regular URL, fetch and convert to base64
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          imageData = await new Promise<string>((resolve, reject) => {
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              const base64Match = result.match(/^data:image\/[^;]+;base64,(.+)$/);
+              if (base64Match && base64Match[1]) {
+                resolve(base64Match[1]);
+              } else {
+                reject(new Error('Failed to convert image to base64'));
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        if (imageData) {
+          imageSlices.push(imageData);
+        }
+      }
+
+      console.log(`Sending ${imageSlices.length} images to backend for batch analysis`);
+
+      // Call the real API endpoint with image data
       const result = await apiService.analyzeBatch(
         patient.id,
         currentFile.id,
         fromSlice,
-        toSlice
+        toSlice,
+        imageSlices
       );
 
       console.log('Batch analysis result:', result);
@@ -522,12 +564,49 @@ const PatientDashboardPage: React.FC = () => {
 
     try {
       const currentFile = patientFiles[currentFileIndex];
+      const currentImageUrl = ctImages[currentImageIndex];
 
-      // Call the real API endpoint
+      // Extract base64 image data
+      let imageData = '';
+
+      if (currentImageUrl.startsWith('data:image')) {
+        // Extract base64 data from data URL
+        // Format: data:image/png;base64,<base64-data>
+        const base64Match = currentImageUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
+        if (base64Match && base64Match[1]) {
+          imageData = base64Match[1];
+          console.log('Extracted base64 image data, length:', imageData.length);
+        } else {
+          throw new Error('Unable to extract base64 data from image URL');
+        }
+      } else {
+        // If it's a regular URL, we need to fetch and convert to base64
+        const response = await fetch(currentImageUrl);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        imageData = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const base64Match = result.match(/^data:image\/[^;]+;base64,(.+)$/);
+            if (base64Match && base64Match[1]) {
+              resolve(base64Match[1]);
+            } else {
+              reject(new Error('Failed to convert image to base64'));
+            }
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      console.log('Sending image data to backend, base64 length:', imageData.length);
+
+      // Call the real API endpoint with image data
       const result = await apiService.analyzeSlice(
         patient.id,
         currentFile.id,
         currentImageIndex + 1,
+        imageData,
         ctImages.length
       );
 

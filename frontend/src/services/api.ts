@@ -292,28 +292,38 @@ class ApiService {
     patientId: string,
     fileId: string,
     sliceNumber: number,
+    imageData: string,
     totalSlices?: number
   ): Promise<any> {
-    const params = new URLSearchParams({
-      ...(totalSlices && { total_slices: totalSlices.toString() })
+    return await this.makeRequest<any>('/analysis/slice', {
+      method: 'POST',
+      body: JSON.stringify({
+        patient_id: patientId,
+        file_id: fileId,
+        slice_number: sliceNumber,
+        image_data: imageData,
+        ...(totalSlices && { total_slices: totalSlices })
+      }),
     });
-    const queryString = params.toString();
-    const endpoint = `/analysis/slice/${patientId}/${fileId}/${sliceNumber}${queryString ? '?' + queryString : ''}`;
-    return await this.makeRequest<any>(endpoint);
   }
 
   async analyzeBatch(
     patientId: string,
     fileId: string,
     sliceStart: number,
-    sliceEnd: number
+    sliceEnd: number,
+    imageSlices: string[]
   ): Promise<any> {
-    const params = new URLSearchParams({
-      slice_start: sliceStart.toString(),
-      slice_end: sliceEnd.toString()
+    return await this.makeRequest<any>('/analysis/batch', {
+      method: 'POST',
+      body: JSON.stringify({
+        patient_id: patientId,
+        file_id: fileId,
+        slice_start: sliceStart,
+        slice_end: sliceEnd,
+        image_slices: imageSlices
+      }),
     });
-    const endpoint = `/analysis/batch/${patientId}/${fileId}?${params.toString()}`;
-    return await this.makeRequest<any>(endpoint);
   }
 }
 

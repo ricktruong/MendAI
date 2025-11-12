@@ -99,7 +99,8 @@ async def analyze_batch(request: BatchAnalysisRequest) -> BatchAnalysisResponse:
             file_id=request.file_id,
             file_name=file_name,
             slice_start=request.slice_start,
-            slice_end=request.slice_end
+            slice_end=request.slice_end,
+            image_slices=request.image_slices
         )
 
         return result
