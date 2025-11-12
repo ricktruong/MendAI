@@ -165,7 +165,7 @@ def get_patient_subject_ids() -> List[str]:
     try:
         # Fetch all patients (paginate if needed)
         all_patient_ids = []
-        params = {"_count": "100"}
+        params = {"_count": "500"}  # Increased from 100 to 500 to reduce pagination issues
 
         while True:
             try:

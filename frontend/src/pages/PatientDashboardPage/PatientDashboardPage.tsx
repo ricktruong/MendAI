@@ -720,8 +720,8 @@ const PatientDashboardPage: React.FC = () => {
         ];
 
         let encounterStatsData = [
-          { name: 'Diagnoses', value: 0, color: '#8b5cf6' },
-          { name: 'Procedures', value: 0, color: '#3b82f6' },
+          { name: 'Conditions', value: 0, color: '#8b5cf6' },
+          { name: 'Encounters', value: 0, color: '#3b82f6' },
           { name: 'Medications', value: 0, color: '#10b981' },
           { name: 'Observations', value: 0, color: '#f59e0b' },
         ];
@@ -782,8 +782,8 @@ const PatientDashboardPage: React.FC = () => {
 
           // Generate encounter stats
           encounterStatsData = [
-            { name: 'Diagnoses', value: 1 + (seed % 3), color: '#8b5cf6' },
-            { name: 'Procedures', value: (seed % 5), color: '#3b82f6' },
+            { name: 'Conditions', value: 1 + (seed % 3), color: '#8b5cf6' },
+            { name: 'Encounters', value: 1 + (seed % 4), color: '#3b82f6' },
             { name: 'Medications', value: 1 + (seed % 6), color: '#10b981' },
             { name: 'Observations', value: 5 + (seed % 8), color: '#f59e0b' },
           ];
@@ -866,12 +866,12 @@ const PatientDashboardPage: React.FC = () => {
             };
           });
 
-          // Count encounter statistics
+          // Count encounter statistics from global lists (not per-encounter)
           encounterStatsData = [
-            { name: 'Diagnoses', value: latestEncounter.diagnoses?.length || 0, color: '#8b5cf6' },
-            { name: 'Procedures', value: latestEncounter.procedures?.length || 0, color: '#3b82f6' },
-            { name: 'Medications', value: (latestEncounter.medicationStatements?.length || 0) + (latestEncounter.medicationDispense?.length || 0), color: '#10b981' },
-            { name: 'Observations', value: latestEncounter.observations?.length || 0, color: '#f59e0b' },
+            { name: 'Conditions', value: patientNormalizedData.conditions?.length || 0, color: '#8b5cf6' },
+            { name: 'Encounters', value: patientNormalizedData.encounters?.length || 0, color: '#3b82f6' },
+            { name: 'Medications', value: patientNormalizedData.medications?.length || 0, color: '#10b981' },
+            { name: 'Observations', value: patientNormalizedData.observations?.length || 0, color: '#f59e0b' },
           ];
         }
 
@@ -1012,7 +1012,7 @@ const PatientDashboardPage: React.FC = () => {
                     </PieChart>
                   </ResponsiveContainer>
                   <p className="chart-description">
-                    Medical records from recent emergency visit
+                    Clinical data summary from FHIR records
                   </p>
                 </div>
 
@@ -1801,7 +1801,8 @@ const PatientDashboardPage: React.FC = () => {
                   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
                     age--;
                   }
-                  return `${age} years`;
+                  // Use singular/plural correctly
+                  return Math.abs(age) === 1 ? `${age} year` : `${age} years`;
                 })() : 'N/A'}
               </span>
             </div>
