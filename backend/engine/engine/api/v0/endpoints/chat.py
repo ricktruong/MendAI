@@ -36,7 +36,7 @@ class ComprehensiveAnalysisResponse(BaseModel):
     recommendations: List[str]
     overall_confidence: float
 
-# 3. Patient Dashboard Page (formerly Chat Page)
+# 3. Patient Dashboard Page
 # I.User Message Request
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:

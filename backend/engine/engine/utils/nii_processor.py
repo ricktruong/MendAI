@@ -21,11 +21,35 @@ except ImportError:
 class NiiProcessor:
     """Handles NIfTI file processing and conversion to web-viewable images"""
 
-    def __init__(self, upload_dir: str = "uploaded_files"):
+    def __init__(self, upload_dir: str = None):
+        # Use /tmp for Docker containers or current directory for local development
+        if upload_dir is None:
+            # Try to use /tmp first (works in Docker), fallback to current directory
+            try:
+                test_path = Path("/tmp/mendai_uploads")
+                test_path.mkdir(exist_ok=True)
+                upload_dir = "/tmp/mendai_uploads"
+            except PermissionError:
+                # Fallback to current directory
+                upload_dir = "uploaded_files"
+        
         self.upload_dir = Path(upload_dir)
-        self.upload_dir.mkdir(exist_ok=True)
+        try:
+            self.upload_dir.mkdir(exist_ok=True)
+        except PermissionError as e:
+            print(f"Warning: Could not create upload directory {self.upload_dir}: {e}")
+            # Use /tmp as absolute fallback
+            self.upload_dir = Path("/tmp/mendai_uploads")
+            self.upload_dir.mkdir(exist_ok=True)
+        
         self.converted_dir = self.upload_dir / "converted"
-        self.converted_dir.mkdir(exist_ok=True)
+        try:
+            self.converted_dir.mkdir(exist_ok=True)
+        except PermissionError as e:
+            print(f"Warning: Could not create converted directory {self.converted_dir}: {e}")
+            # Use /tmp as absolute fallback
+            self.converted_dir = Path("/tmp/mendai_converted")
+            self.converted_dir.mkdir(exist_ok=True)
 
     def save_uploaded_file(self, file_content: bytes, filename: str) -> str:
         """Save uploaded file to disk and return file path"""

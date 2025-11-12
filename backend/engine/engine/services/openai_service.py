@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 
 # Uncomment when OpenAI API key is available
-# from openai import OpenAI
+from openai import OpenAI
 
 from common.types.ai_analysis import (
     SliceAnalysisResponse,
@@ -30,25 +30,20 @@ logger = logging.getLogger(__name__)
 class OpenAIAnalysisService:
     """Service for AI-powered medical image analysis using OpenAI"""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self):
         """
         Initialize OpenAI service
-
-        Args:
-            api_key: OpenAI API key (defaults to environment variable)
         """
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4-vision-preview")
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4.1")
 
         # Uncomment when API key is available
-        # if self.api_key:
-        #     self.client = OpenAI(api_key=self.api_key)
-        #     logger.info("OpenAI client initialized successfully")
-        # else:
-        #     self.client = None
-        #     logger.warning("OpenAI API key not found. Service will use mock data.")
-
-        self.client = None  # Mock mode for now
+        if self.api_key:
+            self.client = OpenAI(api_key=self.api_key)
+            print("OpenAI client initialized successfully.")
+        else:
+            self.client = None
+            print("OpenAI API key not found. Service will use mock data.")
 
     def analyze_single_slice(
         self,
@@ -73,35 +68,38 @@ class OpenAIAnalysisService:
         Returns:
             SliceAnalysisResponse with structured findings
         """
+        print(f"Analyzing single slice {slice_number}/{total_slices} for patient {patient_id}")
         start_time = time.time()
 
+        print(f"Client: {self.client}")
+        print(f"Image data: {image_data}")
         if self.client and image_data:
             # Real OpenAI API call
+            print(f"Calling OpenAI API for single slice {slice_number}/{total_slices} for patient {patient_id}")
             response = self._call_openai_vision_api(
                 image_data=image_data,
                 prompt=self._get_slice_analysis_prompt(),
                 slice_number=slice_number,
                 total_slices=total_slices
             )
+            print(f"Response: {response}")
             # Parse response into structured format
             analysis = self._parse_slice_analysis_response(response)
         else:
+            print(f"Mocking response for single slice {slice_number}/{total_slices} for patient {patient_id}")
             # Mock response for testing
             analysis = self._generate_mock_slice_analysis(
                 slice_number=slice_number,
                 total_slices=total_slices,
                 anatomical_region=anatomical_region
             )
-
+            print(f"Mock response: {analysis}")
         processing_time = int((time.time() - start_time) * 1000)
 
         # Add metadata
         analysis.metadata.processing_time_ms = processing_time
 
-        logger.info(
-            f"Analyzed slice {slice_number}/{total_slices} for patient {patient_id} "
-            f"in {processing_time}ms"
-        )
+        print(f"Analyzed slice {slice_number}/{total_slices} for patient {patient_id} in {processing_time}ms")
 
         return analysis
 
@@ -172,33 +170,28 @@ class OpenAIAnalysisService:
         """
         Call OpenAI Vision API for single image analysis
 
-        TODO: Implement when API key is available
+        Args:
+            image_data: Base64 encoded image
+            prompt: Prompt for the analysis
+            slice_number: Slice number to analyze
+            total_slices: Total number of slices in the scan
 
-        Example implementation:
-        ```python
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{image_data}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            response_format={"type": "json_object"},
-            max_tokens=1000
-        )
-        return response.choices[0].message.content
-        ```
+        Returns:
+            Dictionary containing the analysis
+
+        Raises:
+            Exception: If the API call fails
         """
-        raise NotImplementedError("OpenAI API integration pending API key")
+        try:
+            response = self.client.responses.create(
+                model=self.model,
+                instructions=prompt,
+                input=f"data:image/png;base64,{image_data}"
+            )
+            return response.output_text
+        except Exception as e:
+            logger.error(f"Error calling OpenAI API: {e}")
+            raise e
 
     def _call_openai_batch_analysis(
         self,

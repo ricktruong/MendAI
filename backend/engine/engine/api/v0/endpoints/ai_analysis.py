@@ -15,7 +15,6 @@ from engine.services.openai_service import get_openai_service
 
 router = APIRouter()
 
-
 @router.post("/analysis/slice", response_model=SliceAnalysisResponse)
 async def analyze_slice(request: SliceAnalysisRequest) -> SliceAnalysisResponse:
     """
@@ -134,6 +133,7 @@ async def get_slice_analysis(
         SliceAnalysisResponse with findings
     """
     try:
+        print(f"Getting slice analysis for patient {patient_id}, file {file_id}, slice {slice_number}")
         service = get_openai_service()
 
         # Use provided total_slices or default
