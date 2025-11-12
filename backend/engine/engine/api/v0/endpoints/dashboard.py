@@ -270,10 +270,10 @@ stored_cases = load_stored_cases() or []
 async def get_patient_list_data() -> DashboardResponse:
     """
     Get patient list data including patients and recent cases for Patient List Page
-    Fetches real patient data from Google Healthcare FHIR API
+    Fetches first 20 patients from Google Healthcare FHIR API for fast loading
 
     Returns:
-        DashboardResponse: Patient list data with patients and recent cases
+        DashboardResponse: Patient list data with first 20 patients and recent cases
     """
     import httpx
     from datetime import datetime
@@ -289,10 +289,13 @@ async def get_patient_list_data() -> DashboardResponse:
                 response.raise_for_status()
                 subject_ids_data = response.json()
                 # Fix: API returns 'patient_ids' not 'subject_ids'
-                subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
+                all_subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
 
-                # Fetch all patients (no limit)
-                print(f"Fetching {len(subject_ids)} patients from FHIR in parallel...")
+                # Get only first 20 patients for fast loading
+                subject_ids = all_subject_ids[:20]
+                total_patients = len(all_subject_ids)
+
+                print(f"Fetching first 20 patients of {total_patients} from FHIR...")
 
                 # Helper function to extract patient data
                 async def fetch_patient(subject_id: str):
@@ -339,7 +342,7 @@ async def get_patient_list_data() -> DashboardResponse:
                         print(f"✗ Error fetching patient {subject_id}: {type(e).__name__}")
                         return None
 
-                # Fetch all patients in parallel using asyncio.gather
+                # Fetch patients for current page in parallel using asyncio.gather
                 import asyncio
                 tasks = [fetch_patient(subject_id) for subject_id in subject_ids]
                 results = await asyncio.gather(*tasks)
