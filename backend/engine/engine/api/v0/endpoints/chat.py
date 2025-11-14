@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 # Biomedical LLM service configuration
 BIOMEDICAL_LLM_URL = os.getenv("BIOMEDICAL_LLM_URL", "http://biomedical_llm:8003")
 
-<<<<<<< HEAD
 # AI Analysis Models
 class FileAnalysisRequest(BaseModel):
     patient_id: str
@@ -38,9 +37,6 @@ class ComprehensiveAnalysisResponse(BaseModel):
     overall_confidence: float
 
 # 3. Patient Dashboard Page
-=======
-# 3. Patient Dashboard Page (formerly Chat Page)
->>>>>>> da8442b84b104b4d8bf63ed52cb55cccac1f5f70
 # I.User Message Request
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
