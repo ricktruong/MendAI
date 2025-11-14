@@ -1,4 +1,5 @@
 import os
+import traceback
 import requests
 from typing import Dict, Any, List, Optional
 from google.auth.transport.requests import Request
@@ -32,7 +33,7 @@ REQUEST_TIMEOUT = 30  # Timeout for FHIR API requests
 _patient_bundle_cache = {}  # Stores full patient bundles
 _patient_list_cache = None  # Stores list of patient IDs
 _cache_timestamps = {}  # Tracks when data was cached
-CACHE_DURATION_MINUTES = 10  # Cache duration
+CACHE_DURATION_MINUTES = 30  # Cache duration
 _patient_list_cache_time = None
 
 def _is_cache_valid(patient_id: str) -> bool:
@@ -195,6 +196,7 @@ def get_patient_subject_ids() -> List[str]:
                     break
 
             except Exception as page_error:
+                traceback.print_exc()
                 # If pagination fails (e.g., invalid_page_token), return what we have so far
                 if "invalid_page_token" in str(page_error) or "page token" in str(page_error).lower():
                     print(f"⚠ Pagination stopped due to token error. Returning {len(all_patient_ids)} patients fetched so far.")

@@ -79,8 +79,9 @@ const PatientListPage: React.FC = () => {
   const loadPatientListData = async () => {
     try {
       setIsLoading(true);
+      // Load first 20 patients
       const data: PatientListData = await apiService.getPatientListData();
-      
+
       // Map the backend data to frontend format
       const cases: CtCase[] = data.recent_cases.map(caseData => ({
         id: caseData.id,
@@ -97,7 +98,7 @@ const PatientListPage: React.FC = () => {
         managingOrganization: caseData.managingOrganization,
         language: caseData.language,
       }));
-      
+
       setCtCases(cases);
       setFilteredCases(cases);
     } catch (err) {
@@ -232,24 +233,14 @@ const PatientListPage: React.FC = () => {
 
       // Call backend API
       const response = await apiService.createPatient(formData);
-      
-      if (response.success && response.case) {
-        // Map backend response to frontend format
-        const newCase: CtCase = {
-          id: response.case.id,
-          patientName: response.case.patient_name,
-          fileName: response.case.file_name,
-          uploadedAt: response.case.uploaded_at
-        };
 
-        // Add to cases list
-        const updatedCases = [...ctCases, newCase];
-        setCtCases(updatedCases);
-        setFilteredCases(updatedCases);
+      if (response.success && response.case) {
+        // Reload patient list to get updated data
+        await loadPatientListData();
 
         // Close modal and reset form
         handleCloseModal();
-        
+
         alert('Patient added successfully!');
       } else {
         throw new Error(response.message || 'Failed to add patient');
@@ -344,9 +335,9 @@ const PatientListPage: React.FC = () => {
 
       // Call backend API
       const response = await apiService.updatePatient(editPatient.id, formData);
-      
+
       if (response.success && response.case) {
-        // Update the case in the list with new file information
+        // Update the specific case in the list
         const updatedCases = ctCases.map(c =>
           c.id === editPatient.id
             ? {
@@ -403,16 +394,16 @@ const PatientListPage: React.FC = () => {
       setIsLoading(true);
       
       const response = await apiService.deletePatient(deletePatientId);
-      
+
       if (response.success) {
-        // Remove the case from the list
+        // Remove the case from the current list
         const updatedCases = ctCases.filter(c => c.id !== deletePatientId);
         setCtCases(updatedCases);
         setFilteredCases(updatedCases);
 
         // Close modal
         handleCloseModal();
-        
+
         alert('Patient deleted successfully!');
       } else {
         throw new Error(response.message || 'Failed to delete patient');
