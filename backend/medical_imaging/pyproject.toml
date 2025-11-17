@@ -11,6 +11,8 @@ fastapi = "^0.116.0"
 uvicorn = "^0.35.0"
 python-dotenv = "^1.1.1"
 pydantic = "^2.0.0"
+common = {path = "../common"}
+openai = "^2.8.0"
 
 [build-system]
 requires = ["poetry-core"]

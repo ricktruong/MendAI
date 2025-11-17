@@ -28,7 +28,7 @@ const PatientDashboardPage: React.FC = () => {
       id: '1',
       type: 'assistant',
       content: patient
-        ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. I have access to their CT scan images and can help analyze them. What would you like to know about this patient?`
+        ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. What would you like to know about this patient?`
         : "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today?",
       timestamp: new Date().toISOString(),
     },

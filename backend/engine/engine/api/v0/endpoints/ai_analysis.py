@@ -4,6 +4,9 @@ Handles AI-powered analysis of CT scan images using OpenAI
 """
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
+import httpx
+import os
+import logging
 
 from common.types.ai_analysis import (
     SliceAnalysisRequest,
@@ -11,9 +14,12 @@ from common.types.ai_analysis import (
     BatchAnalysisRequest,
     BatchAnalysisResponse,
 )
-from engine.services.openai_service import get_openai_service
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+# Medical Imaging service configuration
+MEDICAL_IMAGING_URL = os.getenv("MEDICAL_IMAGING_URL", "http://medical_imaging:8002")
 
 @router.post("/analysis/slice", response_model=SliceAnalysisResponse)
 async def analyze_slice(request: SliceAnalysisRequest) -> SliceAnalysisResponse:
@@ -33,23 +39,40 @@ async def analyze_slice(request: SliceAnalysisRequest) -> SliceAnalysisResponse:
         HTTPException: If analysis fails
     """
     try:
-        service = get_openai_service()
+        logger.info(f"Forwarding slice analysis request to medical_imaging service at {MEDICAL_IMAGING_URL}/api/v0/analysis/slice")
+        
+        async with httpx.AsyncClient(timeout=120.0) as client:  # Increased timeout for AI processing
+            response = await client.post(
+                f"{MEDICAL_IMAGING_URL}/api/v0/analysis/slice",
+                json=request.model_dump()
+            )
+            
+            if response.status_code == 200:
+                return SliceAnalysisResponse(**response.json())
+            else:
+                error_detail = response.text
+                logger.error(f"Medical imaging service returned status {response.status_code}: {error_detail}")
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Medical imaging service error: {error_detail}"
+                )
 
-        # Note: total_slices should be fetched from file metadata
-        # For now, using a placeholder value
-        total_slices = 150  # TODO: Get from file metadata
-
-        result = service.analyze_single_slice(
-            patient_id=request.patient_id,
-            file_id=request.file_id,
-            slice_number=request.slice_number,
-            total_slices=total_slices,
-            image_data=request.image_data
+    except httpx.TimeoutException:
+        logger.error("Timeout waiting for medical imaging service response")
+        raise HTTPException(
+            status_code=504,
+            detail="The medical imaging service is taking too long to respond. Please try again."
         )
-
-        return result
-
+    except httpx.ConnectError as e:
+        logger.error(f"Cannot connect to medical imaging service at {MEDICAL_IMAGING_URL}: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Cannot connect to medical imaging service at {MEDICAL_IMAGING_URL}. Please ensure the service is running."
+        )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error calling medical imaging service: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Slice analysis failed: {str(e)}"
@@ -87,121 +110,40 @@ async def analyze_batch(request: BatchAnalysisRequest) -> BatchAnalysisResponse:
                 detail="slice_end must be >= slice_start"
             )
 
-        # Get file information
-        # TODO: Fetch actual file name from database
-        file_name = f"CT_Scan_{request.file_id}.nii"
+        logger.info(f"Forwarding batch analysis request to medical_imaging service at {MEDICAL_IMAGING_URL}/api/v0/analysis/batch")
+        
+        async with httpx.AsyncClient(timeout=300.0) as client:  # Longer timeout for batch processing
+            response = await client.post(
+                f"{MEDICAL_IMAGING_URL}/api/v0/analysis/batch",
+                json=request.model_dump()
+            )
+            
+            if response.status_code == 200:
+                return BatchAnalysisResponse(**response.json())
+            else:
+                error_detail = response.text
+                logger.error(f"Medical imaging service returned status {response.status_code}: {error_detail}")
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Medical imaging service error: {error_detail}"
+                )
 
-        service = get_openai_service()
-
-        result = service.analyze_batch(
-            patient_id=request.patient_id,
-            file_id=request.file_id,
-            file_name=file_name,
-            slice_start=request.slice_start,
-            slice_end=request.slice_end,
-            image_slices=request.image_slices
+    except httpx.TimeoutException:
+        logger.error("Timeout waiting for medical imaging service response")
+        raise HTTPException(
+            status_code=504,
+            detail="The medical imaging service is taking too long to respond. Please try again."
         )
-
-        return result
-
+    except httpx.ConnectError as e:
+        logger.error(f"Cannot connect to medical imaging service at {MEDICAL_IMAGING_URL}: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Cannot connect to medical imaging service at {MEDICAL_IMAGING_URL}. Please ensure the service is running."
+        )
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Batch analysis failed: {str(e)}"
-        )
-
-
-@router.get("/analysis/slice/{patient_id}/{file_id}/{slice_number}",
-            response_model=SliceAnalysisResponse)
-async def get_slice_analysis(
-    patient_id: str,
-    file_id: str,
-    slice_number: int,
-    total_slices: Optional[int] = Query(None, description="Total slices in scan")
-) -> SliceAnalysisResponse:
-    """
-    Get analysis for a specific slice (GET endpoint for convenience)
-
-    Args:
-        patient_id: Patient identifier
-        file_id: File identifier
-        slice_number: Slice number to analyze
-        total_slices: Total slices in the scan (optional)
-
-    Returns:
-        SliceAnalysisResponse with findings
-    """
-    try:
-        print(f"Getting slice analysis for patient {patient_id}, file {file_id}, slice {slice_number}")
-        service = get_openai_service()
-
-        # Use provided total_slices or default
-        if total_slices is None:
-            total_slices = 150  # TODO: Get from file metadata
-
-        result = service.analyze_single_slice(
-            patient_id=patient_id,
-            file_id=file_id,
-            slice_number=slice_number,
-            total_slices=total_slices
-        )
-
-        return result
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Slice analysis failed: {str(e)}"
-        )
-
-
-@router.get("/analysis/batch/{patient_id}/{file_id}",
-            response_model=BatchAnalysisResponse)
-async def get_batch_analysis(
-    patient_id: str,
-    file_id: str,
-    slice_start: int = Query(..., description="Starting slice number"),
-    slice_end: int = Query(..., description="Ending slice number")
-) -> BatchAnalysisResponse:
-    """
-    Get batch analysis for a range of slices (GET endpoint)
-
-    Args:
-        patient_id: Patient identifier
-        file_id: File identifier
-        slice_start: Starting slice number
-        slice_end: Ending slice number
-
-    Returns:
-        BatchAnalysisResponse with comprehensive analysis
-    """
-    try:
-        # Validate
-        if slice_start < 1:
-            raise HTTPException(status_code=400, detail="slice_start must be >= 1")
-        if slice_end < slice_start:
-            raise HTTPException(status_code=400, detail="slice_end must be >= slice_start")
-
-        # Get file info
-        file_name = f"CT_Scan_{file_id}.nii"  # TODO: Get from database
-
-        service = get_openai_service()
-
-        result = service.analyze_batch(
-            patient_id=patient_id,
-            file_id=file_id,
-            file_name=file_name,
-            slice_start=slice_start,
-            slice_end=slice_end
-        )
-
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
+        logger.error(f"Error calling medical imaging service: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Batch analysis failed: {str(e)}"
