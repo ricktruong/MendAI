@@ -82,6 +82,35 @@ class NiiProcessor:
 
         return normalized
 
+    def _resize_image_for_api(self, image: Image.Image, max_dimension: int = 1024) -> Image.Image:
+        """
+        Resize image to fit within max_dimension while maintaining aspect ratio.
+        This reduces token usage for OpenAI Vision API.
+
+        Args:
+            image: PIL Image to resize
+            max_dimension: Maximum width or height (default 1024)
+
+        Returns:
+            Resized PIL Image
+        """
+        width, height = image.size
+        
+        # Only resize if image is larger than max_dimension
+        if width <= max_dimension and height <= max_dimension:
+            return image
+        
+        # Calculate new dimensions maintaining aspect ratio
+        if width > height:
+            new_width = max_dimension
+            new_height = int(height * (max_dimension / width))
+        else:
+            new_height = max_dimension
+            new_width = int(width * (max_dimension / height))
+        
+        # Use high-quality resampling for medical images
+        return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
     def convert_nii_to_png_slices(self, nii_path: str, axis: int = 2) -> List[str]:
         """
         Convert NIfTI file to multiple PNG files (one per slice)
@@ -202,14 +231,19 @@ class NiiProcessor:
                 image = image.transpose(Image.FLIP_LEFT_RIGHT)
                 image = image.rotate(90, expand=True)
 
-                # Convert to base64
+                # Resize image to reduce token usage for OpenAI API
+                # 1024x1024 is a good balance between quality and token count
+                image = self._resize_image_for_api(image, max_dimension=1024)
+
+                # Convert to base64 using JPEG for better compression
+                # JPEG quality 85 provides good quality with much smaller file size than PNG
                 buffer = io.BytesIO()
-                image.save(buffer, format='PNG')
+                image.save(buffer, format='JPEG', quality=85, optimize=True)
                 buffer.seek(0)
 
-                # Create data URL
+                # Create data URL with JPEG format
                 img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-                data_url = f"data:image/png;base64,{img_base64}"
+                data_url = f"data:image/jpeg;base64,{img_base64}"
                 data_urls.append(data_url)
 
             print(f"Successfully converted {nii_path} to {len(data_urls)} base64 data URLs")

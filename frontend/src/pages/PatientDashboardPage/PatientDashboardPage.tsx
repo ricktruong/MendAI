@@ -485,42 +485,36 @@ const PatientDashboardPage: React.FC = () => {
     try {
       const currentFile = patientFiles[currentFileIndex];
 
-      // Extract base64 data for all slices in the range
-      console.log(`Extracting image data for ${sliceCount} slices...`);
+      // Extract and resize base64 data for all slices in the range
+      console.log(`Extracting and resizing image data for ${sliceCount} slices...`);
       const imageSlices: string[] = [];
 
       for (let i = fromSlice - 1; i < toSlice; i++) {
         const imageUrl = ctImages[i];
         let imageData = '';
 
-        if (imageUrl.startsWith('data:image')) {
-          // Extract base64 data from data URL
-          const base64Match = imageUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
-          if (base64Match && base64Match[1]) {
-            imageData = base64Match[1];
+        try {
+          if (imageUrl.startsWith('data:image')) {
+            // Resize image to reduce token usage (max 1024px, JPEG quality 85%)
+            imageData = await resizeImageForAPI(imageUrl, 1024, 0.85);
+          } else {
+            // If it's a regular URL, fetch and resize
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            try {
+              imageData = await resizeImageForAPI(blobUrl, 1024, 0.85);
+            } finally {
+              URL.revokeObjectURL(blobUrl);
+            }
           }
-        } else {
-          // If it's a regular URL, fetch and convert to base64
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          imageData = await new Promise<string>((resolve, reject) => {
-            reader.onloadend = () => {
-              const result = reader.result as string;
-              const base64Match = result.match(/^data:image\/[^;]+;base64,(.+)$/);
-              if (base64Match && base64Match[1]) {
-                resolve(base64Match[1]);
-              } else {
-                reject(new Error('Failed to convert image to base64'));
-              }
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-        }
 
-        if (imageData) {
-          imageSlices.push(imageData);
+          if (imageData) {
+            imageSlices.push(imageData);
+          }
+        } catch (error) {
+          console.error(`Failed to process slice ${i + 1}:`, error);
+          // Continue with other slices
         }
       }
 
@@ -553,6 +547,72 @@ const PatientDashboardPage: React.FC = () => {
     setActiveTab(tab);
   };
 
+  // Helper function to resize and compress image for OpenAI API
+  const resizeImageForAPI = async (imageUrl: string, maxDimension: number = 1024, quality: number = 0.85): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Resize if image is larger than maxDimension
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+        
+        // Draw image with high-quality resampling
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to JPEG with compression
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to convert image to blob'));
+              return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const result = reader.result as string;
+              const base64Match = result.match(/^data:image\/[^;]+;base64,(.+)$/);
+              if (base64Match && base64Match[1]) {
+                resolve(base64Match[1]);
+              } else {
+                reject(new Error('Failed to extract base64 data'));
+              }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = imageUrl;
+    });
+  };
+
   // Real-time slice analysis function
   const analyzeCurrentSlice = async () => {
     if (!patient || ctImages.length === 0 || loadingSliceAnalysis || patientFiles.length === 0) {
@@ -566,37 +626,23 @@ const PatientDashboardPage: React.FC = () => {
       const currentFile = patientFiles[currentFileIndex];
       const currentImageUrl = ctImages[currentImageIndex];
 
-      // Extract base64 image data
+      // Extract and resize base64 image data for OpenAI API
       let imageData = '';
 
       if (currentImageUrl.startsWith('data:image')) {
-        // Extract base64 data from data URL
-        // Format: data:image/png;base64,<base64-data>
-        const base64Match = currentImageUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
-        if (base64Match && base64Match[1]) {
-          imageData = base64Match[1];
-          console.log('Extracted base64 image data, length:', imageData.length);
-        } else {
-          throw new Error('Unable to extract base64 data from image URL');
-        }
+        // Resize image to reduce token usage (max 1024px, JPEG quality 85%)
+        imageData = await resizeImageForAPI(currentImageUrl, 1024, 0.85);
+        console.log('Resized and compressed image data, base64 length:', imageData.length);
       } else {
-        // If it's a regular URL, we need to fetch and convert to base64
+        // If it's a regular URL, fetch and resize
         const response = await fetch(currentImageUrl);
         const blob = await response.blob();
-        const reader = new FileReader();
-        imageData = await new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            const base64Match = result.match(/^data:image\/[^;]+;base64,(.+)$/);
-            if (base64Match && base64Match[1]) {
-              resolve(base64Match[1]);
-            } else {
-              reject(new Error('Failed to convert image to base64'));
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+        const blobUrl = URL.createObjectURL(blob);
+        try {
+          imageData = await resizeImageForAPI(blobUrl, 1024, 0.85);
+        } finally {
+          URL.revokeObjectURL(blobUrl);
+        }
       }
 
       console.log('Sending image data to backend, base64 length:', imageData.length);

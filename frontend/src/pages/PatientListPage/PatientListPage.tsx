@@ -916,7 +916,7 @@ const PatientListPage: React.FC = () => {
                     {selectedFile ? selectedFile.name : 'Select File'}
                   </button>
                   <p className="file-hint">
-                    Only NIfTI (.nii or .nii.gz) files are supported for CT analysis
+                    Only NIfTI (.nii) files are supported for CT analysis
                   </p>
                 </div>
               </div>
@@ -1267,7 +1267,7 @@ const PatientListPage: React.FC = () => {
                       </div>
                     )}
                     <p className="file-hint" style={{ margin: '8px 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                      Only NIfTI (.nii or .nii.gz) files are supported for CT analysis. Click "Choose File" multiple times to add multiple files.
+                      Only NIfTI (.nii) files are supported for CT analysis. Click "Choose File" multiple times to add multiple files.
                     </p>
                   </div>
                 </div>
