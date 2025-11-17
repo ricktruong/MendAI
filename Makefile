@@ -1,22 +1,24 @@
-.PHONY: help build up down restart logs clean gpu-build gpu-up gpu-down gpu-logs backend-build backend-up backend-down status health
+.PHONY: help build up down restart logs clean dev dev-build dev-up dev-down dev-restart dev-logs backend-build backend-up backend-down status health
 
 # Default target
 help:
 	@echo "MendAI Docker Management Commands"
 	@echo ""
-	@echo "CPU Commands (Default):"
-	@echo "  build     - Build all Docker images (CPU-only)"
-	@echo "  up        - Start all services (CPU-only)"
+	@echo "Development Commands (Hot Reload):"
+	@echo "  dev       - Start all services in development mode with hot reload"
+	@echo "  dev-build - Build all Docker images for development"
+	@echo "  dev-up    - Start all services in development mode (detached)"
+	@echo "  dev-down  - Stop all development services"
+	@echo "  dev-restart - Restart all development services"
+	@echo "  dev-logs  - View logs from development services"
+	@echo ""
+	@echo "Production Commands:"
+	@echo "  build     - Build all Docker images"
+	@echo "  up        - Start all services"
 	@echo "  down      - Stop all services"
 	@echo "  restart   - Restart all services"
 	@echo "  logs      - View logs from all services"
 	@echo "  clean     - Remove all containers, images, and volumes"
-	@echo ""
-	@echo "GPU Commands:"
-	@echo "  gpu-build - Build all Docker images with GPU support"
-	@echo "  gpu-up    - Start all services with GPU support"
-	@echo "  gpu-down  - Stop GPU services"
-	@echo "  gpu-logs  - View logs from GPU services"
 	@echo ""
 	@echo "Backend Only Commands:"
 	@echo "  backend-build - Build only backend services"
@@ -27,7 +29,26 @@ help:
 	@echo "  status    - Show status of all services"
 	@echo "  health    - Check health of all services"
 
-# CPU commands (default)
+# Development commands (with hot reload)
+dev:
+	docker compose -f docker-compose.dev.yml up --build
+
+dev-build:
+	docker compose -f docker-compose.dev.yml build
+
+dev-up:
+	docker compose -f docker-compose.dev.yml up -d
+
+dev-down:
+	docker compose -f docker-compose.dev.yml down
+
+dev-restart:
+	docker compose -f docker-compose.dev.yml restart
+
+dev-logs:
+	docker compose -f docker-compose.dev.yml logs -f
+
+# Production commands
 build:
 	docker compose build
 
@@ -45,19 +66,6 @@ logs:
 
 clean:
 	docker compose down -v --rmi all --remove-orphans
-
-# GPU commands
-gpu-build:
-	docker compose -f docker-compose.yml -f docker-compose.gpu.yml build
-
-gpu-up:
-	docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
-
-gpu-down:
-	docker compose -f docker-compose.yml -f docker-compose.gpu.yml down
-
-gpu-logs:
-	docker compose -f docker-compose.yml -f docker-compose.gpu.yml logs -f
 
 # Backend only commands
 backend-build:

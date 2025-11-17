@@ -1,0 +1,23 @@
+# Development Dockerfile for Frontend
+# This Dockerfile is optimized for hot-reload development
+
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies (including dev dependencies)
+RUN npm ci
+
+# Copy source code (will be overridden by volume mounts in docker-compose.dev.yml)
+COPY . .
+
+# Expose port for Vite dev server
+EXPOSE 3000
+
+# Default command (can be overridden in docker-compose.dev.yml)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+
