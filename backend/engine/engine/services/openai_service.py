@@ -71,18 +71,14 @@ class OpenAIAnalysisService:
         print(f"Analyzing single slice {slice_number}/{total_slices} for patient {patient_id}")
         start_time = time.time()
 
-        print(f"Client: {self.client}")
-        print(f"Image data: {image_data}")
         if self.client and image_data:
             # Real OpenAI API call
-            print(f"Calling OpenAI API for single slice {slice_number}/{total_slices} for patient {patient_id}")
             response = self._call_openai_vision_api(
                 image_data=image_data,
                 prompt=self._get_slice_analysis_prompt(),
                 slice_number=slice_number,
                 total_slices=total_slices
             )
-            print(f"Response: {response}")
             # Parse response into structured format
             analysis = self._parse_slice_analysis_response(
                 response,
@@ -98,13 +94,10 @@ class OpenAIAnalysisService:
                 total_slices=total_slices,
                 anatomical_region=anatomical_region
             )
-            print(f"Mock response: {analysis}")
         processing_time = int((time.time() - start_time) * 1000)
 
         # Add metadata
         analysis.metadata.processing_time_ms = processing_time
-
-        print(f"Analyzed slice {slice_number}/{total_slices} for patient {patient_id} in {processing_time}ms")
 
         return analysis
 
