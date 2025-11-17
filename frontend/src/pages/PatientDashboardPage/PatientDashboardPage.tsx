@@ -38,6 +38,127 @@ const PatientDashboardPage: React.FC = () => {
   const [sessionId, setSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Load session from localStorage on component mount
+  useEffect(() => {
+    const patientId = patient?.fhirId || patient?.id;
+    if (patientId) {
+      const sessionKey = `chat_session_${patientId}`;
+      const savedSessionId = localStorage.getItem(sessionKey);
+      
+      if (savedSessionId) {
+        console.log(`Restoring session ${savedSessionId} for patient ${patientId}`);
+        setSessionId(savedSessionId);
+        
+        // Try to restore conversation history
+        restoreConversationHistory(savedSessionId);
+      } else {
+        console.log(`No saved session found for patient ${patientId}`);
+      }
+    }
+  }, [patient?.fhirId, patient?.id]);
+
+  // Save session ID to localStorage whenever it changes
+  useEffect(() => {
+    const patientId = patient?.fhirId || patient?.id;
+    if (sessionId && patientId) {
+      const sessionKey = `chat_session_${patientId}`;
+      localStorage.setItem(sessionKey, sessionId);
+      console.log(`Saved session ${sessionId} for patient ${patientId}`);
+    }
+  }, [sessionId, patient?.fhirId, patient?.id]);
+
+  // Function to restore conversation history from backend
+  const restoreConversationHistory = async (savedSessionId: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/chat/history/${savedSessionId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.messages && data.messages.length > 0) {
+          console.log(`Restored ${data.messages.length} messages from conversation history`);
+          
+          // Add initial greeting if history is empty
+          const greetingMessage: Message = {
+            id: '1',
+            type: 'assistant',
+            content: patient
+              ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. I have access to their CT scan images and can help analyze them. What would you like to know about this patient?`
+              : "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today?",
+            timestamp: new Date().toISOString(),
+          };
+          
+          setMessages([greetingMessage, ...data.messages]);
+        }
+      } else {
+        console.log('No conversation history found on server');
+      }
+    } catch (error) {
+      console.error('Error restoring conversation history:', error);
+      // If restoration fails, just use the initial greeting
+    }
+  };
+
+  // Function to clear conversation
+  const handleClearConversation = async () => {
+    if (!sessionId) return;
+    
+    const confirmClear = window.confirm('Are you sure you want to clear this conversation? This action cannot be undone.');
+    if (!confirmClear) return;
+    
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/chat/history/${sessionId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.ok) {
+        console.log('Conversation cleared successfully');
+        
+        // Clear session from localStorage
+        const patientId = patient?.fhirId || patient?.id;
+        if (patientId) {
+          const sessionKey = `chat_session_${patientId}`;
+          localStorage.removeItem(sessionKey);
+        }
+        
+        // Reset to initial state
+        setSessionId('');
+        setMessages([
+          {
+            id: '1',
+            type: 'assistant',
+            content: patient
+              ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. I have access to their CT scan images and can help analyze them. What would you like to know about this patient?`
+              : "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today?",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      } else {
+        console.error('Failed to clear conversation');
+        alert('Failed to clear conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error clearing conversation:', error);
+      alert('Error clearing conversation. Please try again.');
+    }
+  };
+
+
   // CT Images state
   const [ctImages, setCtImages] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
@@ -266,7 +387,7 @@ const PatientDashboardPage: React.FC = () => {
     try {
       const chatRequest = {
         messages: currentMessages,
-        patient_id: patient?.id || patient?.patientId,
+        patient_id: patient?.fhirId || patient?.id,
         session_id: sessionId,
       };
 
@@ -1676,6 +1797,36 @@ const PatientDashboardPage: React.FC = () => {
                 <span className="status-dot online"></span>
                 MendAI is online
               </span>
+              <button 
+                className="clear-chat-button"
+                onClick={handleClearConversation}
+                disabled={!sessionId || messages.length <= 1}
+                title="Clear conversation history"
+                style={{
+                  marginLeft: 'auto',
+                  padding: '8px 16px',
+                  backgroundColor: messages.length > 1 ? '#ef4444' : '#d1d5db',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: messages.length > 1 ? 'pointer' : 'not-allowed',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  if (messages.length > 1) {
+                    e.currentTarget.style.backgroundColor = '#dc2626';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (messages.length > 1) {
+                    e.currentTarget.style.backgroundColor = '#ef4444';
+                  }
+                }}
+              >
+                🗑️ Clear Conversation
+              </button>
             </div>
 
             <div className="chat-container">
