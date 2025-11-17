@@ -139,7 +139,8 @@ export interface BatchAnalysisRequest {
   file_id: string;
   slice_start: number;
   slice_end: number;
-  priority?: string;
+  step_size: number;
+  image_slices: string[];
 }
 
 // ============================================================================

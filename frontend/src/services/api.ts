@@ -1,6 +1,9 @@
 // API service layer for MendAI frontend
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// Constants
+const MAX_BATCH_SIZE = 10;
+
 // Types matching backend models
 export interface LoginRequest {
   email: string;
@@ -318,6 +321,15 @@ class ApiService {
     sliceEnd: number,
     imageSlices: string[]
   ): Promise<any> {
+
+    let stepSize = 1;
+
+    // Truncate the batch size if it exceeds the max batch size
+    if (sliceEnd - sliceStart > MAX_BATCH_SIZE) {
+      stepSize = Math.ceil((sliceEnd - sliceStart) / MAX_BATCH_SIZE);
+      imageSlices = imageSlices.filter((_, i) => i % stepSize === 0);
+    }
+
     return await this.makeRequest<any>('/analysis/batch', {
       method: 'POST',
       body: JSON.stringify({
@@ -325,7 +337,8 @@ class ApiService {
         file_id: fileId,
         slice_start: sliceStart,
         slice_end: sliceEnd,
-        image_slices: imageSlices
+        step_size: stepSize,
+        image_slices: imageSlices,
       }),
     });
   }

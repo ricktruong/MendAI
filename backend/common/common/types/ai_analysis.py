@@ -170,4 +170,5 @@ class BatchAnalysisRequest(BaseModel):
     file_id: str
     slice_start: int
     slice_end: int
-    priority: Optional[str] = Field("routine", description="Analysis priority")
+    step_size: int
+    image_slices: List[str]

@@ -111,7 +111,7 @@ async def analyze_batch(request: BatchAnalysisRequest) -> BatchAnalysisResponse:
             )
 
         logger.info(f"Forwarding batch analysis request to medical_imaging service at {MEDICAL_IMAGING_URL}/api/v0/analysis/batch")
-        
+                
         async with httpx.AsyncClient(timeout=300.0) as client:  # Longer timeout for batch processing
             response = await client.post(
                 f"{MEDICAL_IMAGING_URL}/api/v0/analysis/batch",

@@ -36,7 +36,7 @@ async def analyze_slice(request: SliceAnalysisRequest) -> SliceAnalysisResponse:
         # For now, using a placeholder value
         total_slices = 150  # TODO: Get from file metadata
 
-        result = service.analyze_single_slice(
+        result = service.analyze_slice(
             patient_id=request.patient_id,
             file_id=request.file_id,
             slice_number=request.slice_number,
@@ -96,6 +96,7 @@ async def analyze_batch(request: BatchAnalysisRequest) -> BatchAnalysisResponse:
             file_name=file_name,
             slice_start=request.slice_start,
             slice_end=request.slice_end,
+            step_size=request.step_size,
             image_slices=request.image_slices
         )
 
