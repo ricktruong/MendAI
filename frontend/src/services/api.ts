@@ -85,6 +85,10 @@ export interface PatientListData {
     managingOrganization?: string;
     language?: string;
   }>;
+  total?: number;  // Total number of patients
+  page?: number;   // Current page
+  page_size?: number;  // Items per page
+  total_pages?: number;  // Total pages
 }
 
 // Keep old name for backward compatibility
@@ -180,8 +184,8 @@ class ApiService {
   }
 
   // Patient List endpoints (formerly Dashboard endpoints)
-  async getPatientListData(): Promise<PatientListData> {
-    return await this.makeRequest<PatientListData>('/dashboard');
+  async getPatientListData(page: number = 1, pageSize: number = 20): Promise<PatientListData> {
+    return await this.makeRequest<PatientListData>(`/dashboard?page=${page}&page_size=${pageSize}`);
   }
 
   // Update patient endpoint

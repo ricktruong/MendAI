@@ -33,6 +33,7 @@ class RecentCase(BaseModel):
     files: List[PatientFile] = []  # New field for multiple files
     fhirId: Optional[str] = None
     birthDate: Optional[str] = None
+    age: Optional[int] = None  # Patient age calculated from corrected birthDate
     gender: Optional[str] = None
     race: Optional[str] = None
     ethnicity: Optional[str] = None
@@ -43,6 +44,10 @@ class RecentCase(BaseModel):
 class PatientListResponse(BaseModel):
     patients: List[Patient]
     recent_cases: List[RecentCase]
+    total: int = 0  # Total number of patients
+    page: int = 1   # Current page
+    page_size: int = 20  # Items per page
+    total_pages: int = 1  # Total number of pages
 
 # Keep old name for backward compatibility
 class DashboardResponse(PatientListResponse):
@@ -108,177 +113,158 @@ def save_stored_cases(cases):
         print(f"Error saving cases to file: {e}")
 
 # In-memory storage for demo (in production, this would be a database)
-# Initialize with default cases
+# Initialize with default cases using REAL FHIR patient IDs with actual medical data
 _default_cases = [
     RecentCase(
         id="14889227",
-        patient_name="Sarah Johnson",
+        patient_name="Patient_19621044",
         file_name="CT_Head_001.nii",
         uploaded_at="2025-09-28",
         files=[PatientFile(id="file-001-1", file_name="CT_Head_001.nii", uploaded_at="2025-09-28", file_path=None)],
-        fhirId="07962bbc-98bf-5586-9988-603d6414295c",
-        birthDate="1978-01-16",
-        gender="female",
-        race="White",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="M",
-        managingOrganization="Beth Israel Deaconess Medical Center",
+        fhirId="a40640b3-b1a1-51ba-bf33-10eb05b37177",  # REAL - Has 15 conditions, 50 medications
+        birthDate="2104-03-04",
+        gender="male",
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
         language="en"
     ),
     RecentCase(
         id="14889228",
-        patient_name="Michael Chen",
-        file_name="CT_Chest_045.nii.gz",
+        patient_name="Patient_14987745",
+        file_name="CT_Chest_045.nii",
         uploaded_at="2025-09-27",
-        files=[PatientFile(id="file-002-1", file_name="CT_Chest_045.nii.gz", uploaded_at="2025-09-27", file_path=None)],
-        fhirId="a1b2c3d4-5678-9abc-def0-123456789abc",
+        files=[PatientFile(id="file-002-1", file_name="CT_Chest_045.nii", uploaded_at="2025-09-27", file_path=None)],
+        fhirId="157b5ca8-1a12-57d1-ade6-5e311fcd2312",  # REAL - Has 41 conditions, 50 medications
         birthDate="1965-05-22",
         gender="male",
-        race="Asian",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="M",
-        managingOrganization="Massachusetts General Hospital",
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
         language="en"
     ),
     RecentCase(
         id="14889229",
-        patient_name="Maria Garcia",
+        patient_name="Patient_19852995",
         file_name="CT_Abdomen_102.nii",
         uploaded_at="2025-09-26",
         files=[PatientFile(id="file-003-1", file_name="CT_Abdomen_102.nii", uploaded_at="2025-09-26", file_path=None)],
-        fhirId="b2c3d4e5-6789-0abc-def1-234567890bcd",
+        fhirId="bd380b2e-3b4a-5225-b692-55d035cec534",  # REAL - Has 24 conditions, 50 medications
         birthDate="1992-11-03",
         gender="female",
-        race="Other",
-        ethnicity="Hispanic or Latino",
-        maritalStatus="S",
-        managingOrganization="Boston Medical Center",
-        language="es"
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
+        language="en"
     ),
     RecentCase(
         id="14889230",
-        patient_name="James Williams",
+        patient_name="Patient_19794709",
         file_name="CT_Brain_Trauma_003.nii",
         uploaded_at="2025-09-25",
         files=[PatientFile(id="file-004-1", file_name="CT_Brain_Trauma_003.nii", uploaded_at="2025-09-25", file_path=None)],
-        fhirId="c3d4e5f6-7890-1bcd-ef12-34567890cdef",
+        fhirId="4b8344ae-1dbd-53e2-803c-d9912bbe0a8b",  # REAL - Has 12 conditions, 38 medications
         birthDate="1955-07-14",
         gender="male",
-        race="Black or African American",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="W",
-        managingOrganization="Brigham and Women's Hospital",
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
         language="en"
     ),
     RecentCase(
         id="14889231",
-        patient_name="Emily Rodriguez",
+        patient_name="Patient_19674707",
         file_name="CT_Spine_067.nii",
         uploaded_at="2025-09-24",
         files=[PatientFile(id="file-005-1", file_name="CT_Spine_067.nii", uploaded_at="2025-09-24", file_path=None)],
-        fhirId="d4e5f6g7-8901-2cde-f123-4567890defgh",
+        fhirId="ebcb8e92-a469-5637-a3e1-5808b0d0d206",  # REAL - Has 50 conditions, 50 medications
         birthDate="1980-03-28",
         gender="female",
-        race="White",
-        ethnicity="Hispanic or Latino",
-        maritalStatus="D",
-        managingOrganization="Tufts Medical Center",
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
         language="en"
     ),
     RecentCase(
         id="14889232",
-        patient_name="David Kim",
+        patient_name="Patient_19580789",
         file_name="CT_Thorax_089.nii",
         uploaded_at="2025-09-23",
         files=[PatientFile(id="file-006-1", file_name="CT_Thorax_089.nii", uploaded_at="2025-09-23", file_path=None)],
-        fhirId="e5f6g7h8-9012-3def-1234-567890efghij",
+        fhirId="adc104ea-ad67-5fcb-bbc6-3f010a5489fd",  # REAL - Has 50 conditions, 50 medications
         birthDate="1970-12-10",
         gender="male",
-        race="Asian",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="M",
-        managingOrganization="Beth Israel Deaconess Medical Center",
-        language="ko"
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
+        language="en"
     ),
     RecentCase(
         id="14889233",
-        patient_name="Jennifer Washington",
+        patient_name="Patient_19519554",
         file_name="CT_Pelvis_045.nii",
         uploaded_at="2025-09-22",
         files=[PatientFile(id="file-007-1", file_name="CT_Pelvis_045.nii", uploaded_at="2025-09-22", file_path=None)],
-        fhirId="f6g7h8i9-0123-4efg-2345-67890fghijk1",
+        fhirId="b78c7cf9-5806-5add-8de6-dc96ad039263",  # REAL - Has 44 conditions, 50 medications
         birthDate="1988-08-19",
         gender="female",
-        race="Black or African American",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="S",
-        managingOrganization="Boston Children's Hospital",
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
         language="en"
     ),
     RecentCase(
         id="14889234",
-        patient_name="Robert Patel",
+        patient_name="Patient_19950252",
         file_name="CT_Neck_034.nii",
         uploaded_at="2025-09-21",
         files=[PatientFile(id="file-008-1", file_name="CT_Neck_034.nii", uploaded_at="2025-09-21", file_path=None)],
-        fhirId="g7h8i9j0-1234-5fgh-3456-7890ghijkl12",
+        fhirId="167fb11d-cdb0-5df0-b31d-d6849bc86f9c",  # REAL - Has 9 conditions, 0 medications
         birthDate="1963-04-07",
         gender="male",
-        race="Asian",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="M",
-        managingOrganization="Massachusetts General Hospital",
-        language="hi"
-    ),
-    RecentCase(
-        id="14889235",
-        patient_name="Linda Martinez",
-        file_name="CT_Sinus_012.nii",
-        uploaded_at="2025-09-20",
-        files=[PatientFile(id="file-009-1", file_name="CT_Sinus_012.nii", uploaded_at="2025-09-20", file_path=None)],
-        fhirId="h8i9j0k1-2345-6ghi-4567-890hijklm123",
-        birthDate="1975-09-15",
-        gender="female",
-        race="White",
-        ethnicity="Hispanic or Latino",
-        maritalStatus="M",
-        managingOrganization="Lahey Hospital & Medical Center",
-        language="es"
-    ),
-    RecentCase(
-        id="14889236",
-        patient_name="Thomas Anderson",
-        file_name="CT_Cardiac_078.nii",
-        uploaded_at="2025-09-19",
-        files=[PatientFile(id="file-010-1", file_name="CT_Cardiac_078.nii", uploaded_at="2025-09-19", file_path=None)],
-        fhirId="i9j0k1l2-3456-7hij-5678-90ijklmn1234",
-        birthDate="1982-06-25",
-        gender="male",
-        race="White",
-        ethnicity="Not Hispanic or Latino",
-        maritalStatus="S",
-        managingOrganization="Beth Israel Deaconess Medical Center",
+        race="Unknown",
+        ethnicity="Unknown",
+        maritalStatus="Unknown",
+        managingOrganization="Healthcare Facility",
         language="en"
     ),
 ]
 
-# Load persisted cases (no default fallback - real patients only)
-stored_cases = load_stored_cases() or []
+# Load persisted cases or use defaults
+stored_cases = load_stored_cases() or _default_cases
 
 # 2. Patient List Page (formerly Dashboard Page)
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_patient_list_data() -> DashboardResponse:
+async def get_patient_list_data(
+    page: int = 1,
+    page_size: int = 20
+) -> DashboardResponse:
     """
-    Get patient list data including patients and recent cases for Patient List Page
-    Fetches first 20 patients from Google Healthcare FHIR API for fast loading
-
+    Get patient list data with pagination
+    
+    Args:
+        page: Page number (1-indexed)
+        page_size: Number of patients per page (default: 20, max: 100)
+    
     Returns:
-        DashboardResponse: Patient list data with first 20 patients and recent cases
+        DashboardResponse: Paginated patient list data
     """
     import httpx
     from datetime import datetime
+    import math
 
     try:
+        # Validate pagination parameters
+        page = max(1, page)  # Ensure page >= 1
+        page_size = min(max(1, page_size), 100)  # Limit between 1 and 100
+
         # Fetch patient data from patient_data service
         PATIENT_DATA_URL = os.getenv("PATIENT_DATA_SERVICE_URL", "http://patient_data:8001")
 
@@ -291,11 +277,17 @@ async def get_patient_list_data() -> DashboardResponse:
                 # Fix: API returns 'patient_ids' not 'subject_ids'
                 all_subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
 
-                # Get only first 20 patients for fast loading
-                subject_ids = all_subject_ids[:20]
                 total_patients = len(all_subject_ids)
+                total_pages = math.ceil(total_patients / page_size)
+                
+                # Calculate pagination indices
+                start_idx = (page - 1) * page_size
+                end_idx = min(start_idx + page_size, total_patients)
+                
+                # Get paginated subset
+                subject_ids = all_subject_ids[start_idx:end_idx]
 
-                print(f"Fetching first 20 patients of {total_patients} from FHIR...")
+                print(f"Fetching page {page}/{total_pages}: patients {start_idx+1}-{end_idx} of {total_patients}")
 
                 # Helper function to extract patient data
                 async def fetch_patient(subject_id: str):
@@ -322,6 +314,28 @@ async def get_patient_list_data() -> DashboardResponse:
                         # Extract managing organization
                         org_ref = patient_raw.get("managingOrganization", {}).get("reference", "")
 
+                        # Get birthDate and correct it if needed (subtract 78 years if in future)
+                        birth_date_str = patient_raw.get("birthDate")
+                        corrected_birth_date = birth_date_str
+                        age = None
+                        
+                        if birth_date_str:
+                            try:
+                                birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d")
+                                
+                                # If date is in the future, keep subtracting 78 years until it's not
+                                while birth_date.year > datetime.now().year:
+                                    birth_date = birth_date.replace(year=birth_date.year - 78)
+                                
+                                corrected_birth_date = birth_date.strftime("%Y-%m-%d")
+                                
+                                # Calculate age from corrected birthdate
+                                today = datetime.now()
+                                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                            except Exception as e:
+                                print(f"Error calculating age for {subject_id}: {e}")
+                                age = None
+
                         # Create a case entry from patient data
                         return RecentCase(
                             id=patient_id,
@@ -330,7 +344,8 @@ async def get_patient_list_data() -> DashboardResponse:
                             uploaded_at=datetime.now().strftime("%Y-%m-%d"),
                             files=[],
                             fhirId=subject_id,
-                            birthDate=patient_raw.get("birthDate"),
+                            birthDate=corrected_birth_date,
+                            age=age,
                             gender=patient_raw.get("gender"),
                             race=race,
                             ethnicity=ethnicity,
@@ -363,15 +378,38 @@ async def get_patient_list_data() -> DashboardResponse:
 
                 patients = []
 
-                print(f"Successfully loaded {len(recent_cases)} patients from FHIR")
-                # Return whatever FHIR gave us, even if empty (no fallback to stored_cases)
+                print(f"Successfully loaded {len(recent_cases)} patients from FHIR (page {page}/{total_pages})")
+                if len(recent_cases) == 0 and page == 1:
+                    print("No patients loaded, falling back to stored_cases")
+                    return DashboardResponse(
+                        patients=[], 
+                        recent_cases=stored_cases,
+                        total=len(stored_cases),
+                        page=1,
+                        page_size=page_size,
+                        total_pages=1
+                    )
 
-                return DashboardResponse(patients=patients, recent_cases=recent_cases)
+                return DashboardResponse(
+                    patients=patients,
+                    recent_cases=recent_cases,
+                    total=total_patients,
+                    page=page,
+                    page_size=page_size,
+                    total_pages=total_pages
+                )
 
             except httpx.HTTPError as e:
                 print(f"Error connecting to patient_data service: {e}")
-                # Return empty list if service is unavailable (no fallback to stored_cases)
-                return DashboardResponse(patients=[], recent_cases=[])
+                # Fallback to stored_cases if service is unavailable
+                return DashboardResponse(
+                    patients=[],
+                    recent_cases=stored_cases,
+                    total=len(stored_cases),
+                    page=1,
+                    page_size=page_size,
+                    total_pages=1
+                )
 
     except Exception as e:
         print(f"Internal server error: {e}")

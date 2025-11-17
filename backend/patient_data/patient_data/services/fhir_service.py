@@ -166,7 +166,7 @@ def get_patient_subject_ids() -> List[str]:
     try:
         # Fetch all patients (paginate if needed)
         all_patient_ids = []
-        params = {"_count": "500"}  # Increased from 100 to 500 to reduce pagination issues
+        params = {"_count": "100"}
 
         while True:
             try:
@@ -343,7 +343,7 @@ def normalize_fhir_bundle(bundle: Dict[str, Any]) -> Dict[str, Any]:
         "id": patient.get("id"),
         "resourceType": "Patient",
         "name": extract_patient_name(patient),
-        "birthDate": patient.get("birthDate"),
+        "birthDate": correct_fhir_date(patient.get("birthDate")),
         "age": calculate_age(patient.get("birthDate")),
         "gender": patient.get("gender"),
         "maritalStatus": extract_codeable_concept(patient.get("maritalStatus")),
@@ -392,12 +392,47 @@ def extract_patient_name(patient: Dict) -> str:
         return f"{given} {family}".strip() or "Unknown"
     return "Unknown"
 
+def correct_fhir_date(date_str: str, is_datetime: bool = False) -> str:
+    """
+    Correct FHIR dates that are shifted by approximately 78 years into the future.
+    This appears to be an issue with synthetic/test data in the FHIR store.
+    
+    Some dates require multiple corrections (e.g., 2118 -> 2040 -> 1962).
+    We keep subtracting 78 years until the date is no longer in the future.
+    
+    Args:
+        date_str: Date string in format "YYYY-MM-DD" or ISO datetime
+        is_datetime: True if the string includes time information
+    """
+    if not date_str:
+        return date_str
+    try:
+        # Handle datetime strings (e.g., "2112-10-11T21:37:35-04:00")
+        if 'T' in date_str or is_datetime:
+            # Parse ISO format datetime
+            date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            # Keep subtracting 78 years until date is in the past
+            while date_obj.year > datetime.now().year:
+                date_obj = date_obj.replace(year=date_obj.year - 78)
+            return date_obj.isoformat()
+        else:
+            # Handle simple date strings (e.g., "2043-02-11")
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            # Keep subtracting 78 years until date is in the past
+            while date_obj.year > datetime.now().year:
+                date_obj = date_obj.replace(year=date_obj.year - 78)
+            return date_obj.strftime("%Y-%m-%d")
+    except:
+        return date_str
+
 def calculate_age(birth_date: str) -> int:
     """Calculate age from birth date."""
     if not birth_date:
         return 0
     try:
-        birth = datetime.strptime(birth_date, "%Y-%m-%d")
+        # Correct the date first if needed
+        corrected_date = correct_fhir_date(birth_date)
+        birth = datetime.strptime(corrected_date, "%Y-%m-%d")
         today = datetime.now()
         age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
         return age
@@ -424,7 +459,7 @@ def normalize_encounter(encounter: Dict) -> Dict:
         "id": encounter.get("id"),
         "type": extract_codeable_concept(encounter.get("type", [{}])[0] if encounter.get("type") else {}),
         "status": encounter.get("status"),
-        "date": encounter.get("period", {}).get("start"),
+        "date": correct_fhir_date(encounter.get("period", {}).get("start"), is_datetime=True),
         "reason": extract_codeable_concept(encounter.get("reasonCode", [{}])[0] if encounter.get("reasonCode") else {})
     }
 
@@ -432,12 +467,14 @@ def normalize_observation(observation: Dict) -> Dict:
     """Normalize observation data."""
     value = observation.get("valueQuantity", {})
     
+    obs_date = observation.get("effectiveDateTime") or observation.get("issued")
+    
     return {
         "id": observation.get("id"),
         "code": extract_codeable_concept(observation.get("code")),
         "value": value.get("value"),
         "unit": value.get("unit"),
-        "date": observation.get("effectiveDateTime") or observation.get("issued")
+        "date": correct_fhir_date(obs_date, is_datetime=True) if obs_date else None
     }
 
 def extract_medication_info(medication_request: Dict) -> Dict:
