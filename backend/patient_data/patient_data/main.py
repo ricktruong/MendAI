@@ -7,7 +7,7 @@ load_dotenv(dotenv_path=env_path)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from patient_data.routes import patients, observations, encounters, conditions, medications, chat
+from patient_data.routes import patients, observations, encounters, conditions, medications
 
 app = FastAPI(
     title="MendAI Patient Data API",
@@ -28,7 +28,6 @@ app.include_router(observations.router, prefix="/api")
 app.include_router(encounters.router, prefix="/api")
 app.include_router(conditions.router, prefix="/api")
 app.include_router(medications.router, prefix="/api")
-app.include_router(chat.router, prefix="/api/clinical")  # Changed from /api to /api/clinical
 
 @app.get("/")
 def read_root():

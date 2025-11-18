@@ -7,6 +7,8 @@ import jsPDF from 'jspdf';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import type { SliceAnalysisResponse, BatchAnalysisResponse, Finding, Recommendation } from '../../types/ai-analysis';
 import { getFindingIcon, getFindingColor, getRecommendationIcon, getRecommendationColor } from '../../types/ai-analysis';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Tab types for the dashboard
 type TabType = 'summary' | 'ct-analysis' | 'ai-results' | 'chat';
@@ -1891,8 +1893,10 @@ const PatientDashboardPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="message-content">
-                      {message.content}
-                      
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+
                       {message.analysis_results && message.analysis_results.length > 0 && (
                         <div className="analysis-results">
                           {message.analysis_results.map((result, index) => (
