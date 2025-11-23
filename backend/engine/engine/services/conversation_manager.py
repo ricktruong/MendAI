@@ -2,13 +2,12 @@
 Conversation Manager Service
 Manages conversation history and context for chat sessions
 """
-import logging
+import structlog
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from collections import defaultdict
-import json
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class ConversationManager:

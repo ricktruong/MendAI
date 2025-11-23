@@ -109,7 +109,7 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseURL}/api/v0${endpoint}`;
+    const url = `${this.baseURL}${endpoint}`;
     
     // Add default headers
     const headers: Record<string, string> = {
@@ -154,7 +154,7 @@ class ApiService {
   // Authentication endpoints
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      await this.makeRequest<any>('/login', {
+      await this.makeRequest<any>('/login/login', {
         method: 'POST',
         body: JSON.stringify(credentials),
       });
@@ -180,7 +180,7 @@ class ApiService {
 
   // Chat endpoints
   async sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
-    return await this.makeRequest<ChatResponse>('/chat', {
+    return await this.makeRequest<ChatResponse>('/chat/chat', {
       method: 'POST',
       body: JSON.stringify(request),
     });
@@ -193,7 +193,7 @@ class ApiService {
 
   // Update patient endpoint
   async updatePatient(caseId: string, formData: FormData): Promise<any> {
-    const url = `${this.baseURL}/api/v0/patients/${caseId}`;
+    const url = `${this.baseURL}/dashboard/patients/${caseId}`;
     
     // For file upload, we need to handle FormData differently
     const token = localStorage.getItem('token');
@@ -231,14 +231,14 @@ class ApiService {
 
   // Delete patient endpoint
   async deletePatient(caseId: string): Promise<any> {
-    return await this.makeRequest<any>(`/patients/${caseId}`, {
+    return await this.makeRequest<any>(`/dashboard/patients/${caseId}`, {
       method: 'DELETE',
     });
   }
 
   // Create patient endpoint
   async createPatient(formData: FormData): Promise<any> {
-    const url = `${this.baseURL}/api/v0/patients`;
+    const url = `${this.baseURL}/dashboard/patients`;
     
     // For file upload, we need to handle FormData differently
     const token = localStorage.getItem('token');
@@ -277,12 +277,12 @@ class ApiService {
 
   // Get patient files
   async getPatientFiles(caseId: string): Promise<{ success: boolean; files: PatientFile[]; message: string }> {
-    return await this.makeRequest<{ success: boolean; files: PatientFile[]; message: string }>(`/patients/${caseId}/files`);
+    return await this.makeRequest<{ success: boolean; files: PatientFile[]; message: string }>(`/dashboard/patients/${caseId}/files`);
   }
 
   // Delete patient file
   async deletePatientFile(caseId: string, fileId: string): Promise<{ success: boolean; message: string }> {
-    return await this.makeRequest<{ success: boolean; message: string }>(`/patients/${caseId}/files/${fileId}`, {
+    return await this.makeRequest<{ success: boolean; message: string }>(`/dashboard/patients/${caseId}/files/${fileId}`, {
       method: 'DELETE',
     });
   }
@@ -302,7 +302,7 @@ class ApiService {
     imageData: string,
     totalSlices?: number
   ): Promise<any> {
-    return await this.makeRequest<any>('/analysis/slice', {
+    return await this.makeRequest<any>('/ai-analysis/slice', {
       method: 'POST',
       body: JSON.stringify({
         patient_id: patientId,
@@ -330,7 +330,7 @@ class ApiService {
       imageSlices = imageSlices.filter((_, i) => i % stepSize === 0);
     }
 
-    return await this.makeRequest<any>('/analysis/batch', {
+    return await this.makeRequest<any>('/ai-analysis/batch', {
       method: 'POST',
       body: JSON.stringify({
         patient_id: patientId,

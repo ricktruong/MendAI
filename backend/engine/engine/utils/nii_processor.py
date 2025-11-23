@@ -2,10 +2,9 @@
 NIfTI file processing utilities for converting NIfTI files to web-viewable images
 """
 
-import os
 import io
 import base64
-from typing import Optional, List, Tuple
+from typing import Optional, List
 from pathlib import Path
 
 try:

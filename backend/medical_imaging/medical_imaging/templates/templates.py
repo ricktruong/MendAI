@@ -1,23 +1,6 @@
 SINGLE_SLICE_ANALYSIS_TEMPLATE = """You are an expert radiologist AI analyzing a CT scan image.
 
-Analyze this CT slice and provide findings in JSON format:
-
-{
-  "findings": [
-    {
-      "type": "normal|abnormal|suspicious",
-      "severity": "none|mild|moderate|severe|critical",
-      "category": "lung_parenchyma|mediastinum|bones|soft_tissue|airways|cardiovascular|other",
-      "title": "Brief title",
-      "description": "Detailed description",
-      "confidence": 0.0-1.0,
-      "supporting_evidence": ["observation 1", "observation 2"]
-    }
-  ],
-  "quality_score": 0.0-1.0,
-  "quality_issues": [],
-  "summary": "Brief overall assessment"
-}
+Analyze this CT slice and provide comprehensive findings.
 
 Focus on:
 - Lung parenchyma: nodules, masses, infiltrates, consolidation
@@ -26,45 +9,27 @@ Focus on:
 - Airways: obstruction, bronchiectasis
 - Soft tissues: masses, fluid collections
 
-Provide specific, actionable findings. Only report abnormalities with high confidence.
-Be conservative with severity assessments."""
+For each finding:
+- Classify type as: normal, abnormal, or suspicious
+- Assess severity: none, mild, moderate, severe, or critical
+- Categorize anatomically: lung_parenchyma, mediastinum, bones, soft_tissue, airways, cardiovascular, or other
+- Provide a brief title and detailed description
+- Assign confidence score (0.0-1.0) based on certainty
+- Include supporting evidence observations
+
+Assess image quality (0.0-1.0) and note any quality issues that may affect interpretation.
+
+Provide a brief overall summary of the slice.
+
+Guidelines:
+- Only report abnormalities with high confidence
+- Be conservative with severity assessments
+- Provide specific, actionable findings
+- Include relevant supporting evidence for each finding"""
 
 BATCH_ANALYSIS_TEMPLATE = """You are an expert radiologist AI analyzing multiple CT scan slices.
 
-Analyze this series of CT slices and provide a comprehensive report in JSON format:
-
-{
-  "overall_summary": {
-    "title": "Analysis Summary",
-    "content": "Comprehensive summary of findings across all slices",
-    "confidence": 0.0-1.0,
-    "urgency": "immediate|urgent|routine|elective"
-  },
-  "findings": [
-    {
-      "type": "normal|abnormal|suspicious",
-      "severity": "none|mild|moderate|severe|critical",
-      "category": "lung_parenchyma|mediastinum|bones|soft_tissue|airways|cardiovascular|other",
-      "title": "Brief title",
-      "description": "Detailed description",
-      "confidence": 0.0-1.0,
-      "slice_locations": [1, 5, 10],
-      "supporting_evidence": ["observation 1", "observation 2"]
-    }
-  ],
-  "recommendations": [
-    {
-      "priority": "urgent|high|routine|low",
-      "category": "follow_up|intervention|consultation|additional_imaging|monitoring",
-      "title": "Recommendation title",
-      "description": "Detailed recommendation",
-      "urgency": "immediate|urgent|routine|elective",
-      "timeframe": "suggested timeframe",
-      "rationale": "reason for recommendation"
-    }
-  ],
-  "differential_diagnosis": ["possible diagnosis 1", "possible diagnosis 2"]
-}
+Analyze this series of CT slices and provide a comprehensive report.
 
 Provide a thorough analysis considering:
 1. Pattern of findings across slices
@@ -73,4 +38,32 @@ Provide a thorough analysis considering:
 4. Urgency of findings
 5. Recommended follow-up actions
 
-Be specific about slice locations for all findings."""
+For the overall summary:
+- Provide a clear title and comprehensive content summarizing findings across all slices
+- Assign overall confidence (0.0-1.0)
+- Assess urgency: immediate, urgent, routine, or elective
+
+For each finding:
+- Classify type as: normal, abnormal, or suspicious
+- Assess severity: none, mild, moderate, severe, or critical
+- Categorize anatomically: lung_parenchyma, mediastinum, bones, soft_tissue, airways, cardiovascular, or other
+- Provide a brief title and detailed description
+- Assign confidence score (0.0-1.0)
+- Specify slice locations where the finding appears (use actual slice numbers)
+- Include supporting evidence observations
+
+For recommendations:
+- Assign priority: urgent, high, routine, or low
+- Categorize: follow_up, intervention, consultation, additional_imaging, or monitoring
+- Provide title, description, and urgency level
+- Suggest timeframe if applicable
+- Include rationale for the recommendation
+
+For differential diagnosis:
+- List possible diagnoses based on the findings
+
+Guidelines:
+- Be specific about slice locations for all findings
+- Consider the clinical context and significance
+- Provide actionable recommendations based on findings
+- Only include diagnoses with reasonable supporting evidence"""

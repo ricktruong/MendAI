@@ -3,7 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from common.core.logger import configure_logging
-from .api.v0.routes import api_router
+from .routes.chat import router as chat_router
+from .routes.ai_analysis import router as ai_analysis_router
+from .routes.dashboard import router as dashboard_router
+from .routes.login import router as login_router
 
 # Configure logging
 configure_logging()
@@ -22,7 +25,10 @@ app.add_middleware(
 )
 
 # Include API routes
-app.include_router(api_router, prefix="/api")
+app.include_router(chat_router)
+app.include_router(ai_analysis_router)
+app.include_router(dashboard_router)
+app.include_router(login_router)
 
 @app.get("/")
 def read_root():

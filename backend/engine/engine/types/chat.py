@@ -2,8 +2,8 @@ from typing import List, Optional, Union, Literal
 from datetime import datetime
 from pydantic import BaseModel
 
-from common.data_model.common_request import CommonRequest
-from common.data_model.common_response import CommonResponse
+from common.types.common_request import CommonRequest
+from common.types.common_response import CommonResponse
 
 
 class Attachment(BaseModel):

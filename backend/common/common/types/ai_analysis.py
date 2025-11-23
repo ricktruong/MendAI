@@ -4,16 +4,10 @@ These types ensure consistency between frontend and backend.
 """
 from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
-from datetime import datetime
-
-
-# ============================================================================
-# Finding Types
-# ============================================================================
 
 class Finding(BaseModel):
     """A single clinical finding from AI analysis"""
-    id: str = Field(..., description="Unique identifier for this finding")
+    id: Optional[str] = Field(None, description="Unique identifier for this finding")
     type: Literal["normal", "abnormal", "suspicious"] = Field(
         ..., description="Classification of the finding"
     )
@@ -38,18 +32,11 @@ class Finding(BaseModel):
     supporting_evidence: Optional[List[str]] = Field(
         None, description="Supporting observations"
     )
-    location: Optional[dict] = Field(
-        None, description="Spatial location information"
-    )
 
-
-# ============================================================================
-# Recommendation Types
-# ============================================================================
 
 class Recommendation(BaseModel):
     """A clinical recommendation based on findings"""
-    id: str = Field(..., description="Unique identifier")
+    id: Optional[str] = Field(None, description="Unique identifier")
     priority: Literal["urgent", "high", "routine", "low"] = Field(
         ..., description="Priority level"
     )
@@ -70,10 +57,6 @@ class Recommendation(BaseModel):
     )
     rationale: str = Field(..., description="Reason for recommendation")
 
-
-# ============================================================================
-# Slice Analysis (Single Slice)
-# ============================================================================
 
 class QualityAssessment(BaseModel):
     """Image quality assessment"""
@@ -99,10 +82,6 @@ class SliceAnalysisResponse(BaseModel):
     findings: List[Finding]
     summary: str = Field(..., description="Brief overall summary")
 
-
-# ============================================================================
-# Batch Analysis (Multiple Slices)
-# ============================================================================
 
 class SliceRange(BaseModel):
     """Range of slices analyzed"""
@@ -142,17 +121,7 @@ class BatchAnalysisResponse(BaseModel):
     differential_diagnosis: Optional[List[str]] = Field(
         default_factory=list, description="Possible diagnoses"
     )
-    measurements: Optional[List[dict]] = Field(
-        default_factory=list, description="Quantitative measurements"
-    )
-    comparison_to_prior: Optional[dict] = Field(
-        None, description="Comparison to prior studies if available"
-    )
 
-
-# ============================================================================
-# Request Types
-# ============================================================================
 
 class SliceAnalysisRequest(BaseModel):
     """Request for single slice analysis"""

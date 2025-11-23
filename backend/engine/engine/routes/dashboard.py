@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from engine.utils.nii_processor import nii_processor
 
-router = APIRouter()
+router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 # Persistence file path
 PERSISTENCE_FILE = Path("uploaded_files/patient_data.json")
@@ -241,7 +241,7 @@ _default_cases = [
 stored_cases = load_stored_cases() or _default_cases
 
 # 2. Patient List Page (formerly Dashboard Page)
-@router.get("/dashboard", response_model=DashboardResponse)
+@router.get("/", response_model=DashboardResponse)
 async def get_patient_list_data(
     page: int = 1,
     page_size: int = 20

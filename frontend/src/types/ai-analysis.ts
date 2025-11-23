@@ -28,11 +28,6 @@ export interface Finding {
   confidence: number; // 0.0 to 1.0
   slice_locations?: number[];
   supporting_evidence?: string[];
-  location?: {
-    region?: string;
-    side?: string;
-    coordinates?: any;
-  };
 }
 
 // ============================================================================
@@ -119,8 +114,6 @@ export interface BatchAnalysisResponse {
   findings: Finding[];
   recommendations: Recommendation[];
   differential_diagnosis?: string[];
-  measurements?: any[];
-  comparison_to_prior?: any;
 }
 
 // ============================================================================

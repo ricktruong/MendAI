@@ -73,7 +73,7 @@ const PatientDashboardPage: React.FC = () => {
   const restoreConversationHistory = async (savedSessionId: string) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/chat/history/${savedSessionId}`,
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/chat/history/${savedSessionId}`,
         {
           method: 'GET',
           headers: {
@@ -118,7 +118,7 @@ const PatientDashboardPage: React.FC = () => {
     
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/chat/history/${sessionId}`,
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/chat/history/${sessionId}`,
         {
           method: 'DELETE',
           headers: {
@@ -214,7 +214,7 @@ const PatientDashboardPage: React.FC = () => {
       }
 
       try {
-        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.fhirId}/normalized`;
+        const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/dashboard/patients/${patient.fhirId}/normalized`;
 
         console.log(`Fetching normalized data for patient ${patient.fhirId}...`);
 
@@ -260,7 +260,7 @@ const PatientDashboardPage: React.FC = () => {
 
     try {
       setLoadingImages(true);
-      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v0/patients/${patient.id}/images?file_id=${fileId}`;
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/dashboard/patients/${patient.id}/images?file_id=${fileId}`;
       console.log('Fetching images for file:', fileId, 'from:', apiUrl);
 
       const imagesResponse = await fetch(apiUrl, {

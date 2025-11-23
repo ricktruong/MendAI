@@ -4,23 +4,21 @@ Main FastAPI application for AI-powered clinical consultation
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import logging
+import structlog
 import os
 from dotenv import load_dotenv
 
-from .routes import chat_router
+from .routes.chat import router as chat_router
 from .config import get_settings
+from common.core.logger import configure_logging
 
 # Load environment variables
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
 load_dotenv(env_path)
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+configure_logging()
+logger = structlog.get_logger()
 
 # Get settings
 settings = get_settings()

@@ -2,7 +2,7 @@
 Patient Data Client Service
 Handles communication with the patient_data service to fetch FHIR data
 """
-import logging
+import structlog
 from typing import Optional, Dict, Any
 from functools import lru_cache
 from datetime import datetime, timedelta
@@ -11,7 +11,7 @@ import httpx
 
 from ..config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class PatientDataClient:

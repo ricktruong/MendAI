@@ -2,11 +2,10 @@
 AI Analysis API Endpoints
 Handles AI-powered analysis of CT scan images using OpenAI
 """
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, HTTPException
 import httpx
 import os
-import logging
+import structlog
 
 from common.types.ai_analysis import (
     SliceAnalysisRequest,
@@ -15,13 +14,13 @@ from common.types.ai_analysis import (
     BatchAnalysisResponse,
 )
 
-router = APIRouter()
-logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/ai-analysis", tags=["ai-analysis"])
+logger = structlog.get_logger()
 
 # Medical Imaging service configuration
 MEDICAL_IMAGING_URL = os.getenv("MEDICAL_IMAGING_URL", "http://medical_imaging:8002")
 
-@router.post("/analysis/slice", response_model=SliceAnalysisResponse)
+@router.post("/slice", response_model=SliceAnalysisResponse)
 async def analyze_slice(request: SliceAnalysisRequest) -> SliceAnalysisResponse:
     """
     Analyze a single CT slice
@@ -79,7 +78,7 @@ async def analyze_slice(request: SliceAnalysisRequest) -> SliceAnalysisResponse:
         )
 
 
-@router.post("/analysis/batch", response_model=BatchAnalysisResponse)
+@router.post("/batch", response_model=BatchAnalysisResponse)
 async def analyze_batch(request: BatchAnalysisRequest) -> BatchAnalysisResponse:
     """
     Analyze multiple CT slices (batch analysis)

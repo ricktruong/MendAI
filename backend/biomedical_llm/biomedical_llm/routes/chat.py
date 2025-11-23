@@ -2,15 +2,15 @@
 Chat routes for biomedical_llm service
 Handles LLM inference requests from the engine service
 """
-import logging
+import structlog
 from fastapi import APIRouter, HTTPException
 
-from ..data_models.chat import ChatRequest, ChatResponse
+from ..types.chat import ChatRequest, ChatResponse
 from ..services.openai_service import get_openai_service
 from ..services.patient_data_client import get_patient_data_client
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 @router.post("/chat", response_model=ChatResponse)

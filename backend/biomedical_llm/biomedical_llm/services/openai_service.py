@@ -2,7 +2,7 @@
 OpenAI Service for biomedical LLM inference
 Handles all OpenAI API interactions with biomedical-specific prompts
 """
-import logging
+import structlog
 import re
 from typing import List, Dict, Optional, Any
 from functools import lru_cache
@@ -12,7 +12,7 @@ from openai import OpenAI
 
 from ..config import get_settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger()
 
 
 class OpenAIService:

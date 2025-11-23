@@ -1,17 +1,17 @@
 from fastapi import APIRouter, HTTPException
-import logging
-from typing import List, Dict, Any
+import structlog
+from typing import List
 from pydantic import BaseModel
 import httpx
 import os
 
-from ....data_models.chat import ChatRequest, ChatResponse, Message, AnalysisResult
-from ....services.conversation_manager import get_conversation_manager
+from ..types.chat import ChatRequest, ChatResponse, Message
+from ..services.conversation_manager import get_conversation_manager
 from datetime import datetime
 import uuid
 
-router = APIRouter()
-logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/chat", tags=["chat"])
+logger = structlog.get_logger()
 
 # Biomedical LLM service configuration
 BIOMEDICAL_LLM_URL = os.getenv("BIOMEDICAL_LLM_URL", "http://biomedical_llm:8003")

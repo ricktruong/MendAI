@@ -715,6 +715,7 @@
 
 .ct-viewer {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -723,6 +724,7 @@
   padding: 1rem;
   position: relative;
   border: 1px solid #e2e8f0;
+  overflow: hidden;
 }
 
 /* Slice Analysis Panel - Bottom Right Overlay */
@@ -992,11 +994,12 @@
 }
 
 .ct-sidebar {
-  width: 220px;
+  width: 380px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow-y: auto;
 }
 
 .ct-info-card, .ct-measurements {
@@ -1005,6 +1008,8 @@
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  min-width: 0;
 }
 
 .ct-info-card h4, .ct-measurements h4 {
@@ -1069,6 +1074,9 @@
   background: white;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  max-width: 100%;
 }
 
 .analysis-header {

@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from ....data_models.login import LoginResponse
+from ..types.login import LoginResponse
 
 # Request model for login
 class LoginRequest(BaseModel):
@@ -27,7 +27,7 @@ def get_doctor_patients(email: str) -> list:
         "Maria Garcia"
     ]
 
-router = APIRouter()
+router = APIRouter(prefix="/login", tags=["login"])
 
 # Frontend -> Backend Engine endpoints
 # 1. Login Page
