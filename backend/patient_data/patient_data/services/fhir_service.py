@@ -1,9 +1,21 @@
+"""
+FHIR Service Module for GCP Healthcare API
+
+This module provides a set of utilities to:
+- Authenticate with Google Cloud using service accounts
+- Query and retrieve FHIR resources (Patient, Condition, Encounter, etc.)
+- Normalize FHIR bundles into simplified, structured Python dictionaries
+- Cache data in-memory to minimize redundant API calls
+- Fetch imaging data (e.g., NIfTI files) from Google Cloud Storage
+"""
+
 import os
 import traceback
 import requests
 from typing import Dict, Any, List, Optional
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
+from google.cloud import storage
 from dotenv import load_dotenv
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -32,12 +44,14 @@ REQUEST_TIMEOUT = 30  # Timeout for FHIR API requests
 # -------------------------------
 _patient_bundle_cache = {}  # Stores full patient bundles
 _patient_list_cache = None  # Stores list of patient IDs
+_gcs_imaging_cache = {}
+_imaging_cache_timestamps = {}
 _cache_timestamps = {}  # Tracks when data was cached
 CACHE_DURATION_MINUTES = 30  # Cache duration
 _patient_list_cache_time = None
 
 def _is_cache_valid(patient_id: str) -> bool:
-    """Check if cached data for this patient is still valid."""
+    """Check whether cached data for a given patient is still valid"""
     if patient_id not in _cache_timestamps:
         return False
     
@@ -87,7 +101,8 @@ def get_cache_stats() -> Dict:
 # Google Authentication
 # -------------------------------
 def get_google_auth_token():
-    """Get OAuth token for Google Healthcare API."""
+    """Authenticate using service account credentials and return a valid OAuth token
+    for Google Healthcare API requests."""
     credentials = service_account.Credentials.from_service_account_file(
         CREDENTIALS_PATH,
         scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
@@ -99,7 +114,16 @@ def get_google_auth_token():
 # Core FHIR Functions
 # -------------------------------
 def get_fhir_resource(resource_type: str, resource_id: str):
-    """Fetch a single FHIR resource by type and ID."""
+    """
+    Fetch a single FHIR resource from the FHIR store.
+
+    Args:
+        resource_type (str): The type of FHIR resource (e.g., "Patient").
+        resource_id (str): The ID of the FHIR resource.
+
+    Returns:
+        dict: JSON representation of the FHIR resource.
+    """
     url = f"{FHIR_BASE_URL}/{resource_type}/{resource_id}"
     
     token = get_google_auth_token()
@@ -120,7 +144,16 @@ def get_fhir_resource(resource_type: str, resource_id: str):
         raise Exception(f"Error fetching {resource_type}/{resource_id}: {str(e)}")
 
 def search_fhir_resource(resource_type: str, params: Dict[str, Any] = None):
-    """Search for FHIR resources with query parameters."""
+    """
+    Search the FHIR store for resources using query parameters.
+
+    Args:
+        resource_type (str): FHIR resource type to search.
+        params (dict): Query parameters to use in search.
+
+    Returns:
+        dict: FHIR search bundle containing matched resources.
+    """
     url = f"{FHIR_BASE_URL}/{resource_type}"
     
     token = get_google_auth_token()
@@ -151,8 +184,12 @@ def unwrap_bundle(bundle: Dict[str, Any]) -> List[Dict[str, Any]]:
 # -------------------------------
 def get_patient_subject_ids() -> List[str]:
     """
-    Get all patient subject IDs from the FHIR store.
-    WITH CACHING for patient list.
+    Retrieve all patient IDs from the FHIR store.
+
+    Uses caching to avoid redundant requests.
+
+    Returns:
+        List[str]: List of patient FHIR resource IDs.
     """
     global _patient_list_cache, _patient_list_cache_time
     
@@ -217,8 +254,11 @@ def get_patient_subject_ids() -> List[str]:
 
 def get_encounter_centric_patient_bundle(patient_id: str):
     """
-    Fetch a comprehensive patient bundle including encounters and related resources.
-    WITH CACHING - returns cached data if available and valid.
+    Fetch a comprehensive FHIR bundle for a patient, including related
+    encounters, observations, medications, and conditions.
+
+    Returns:
+        dict: Full FHIR bundle with patient context.
     """
     
     # CACHE CHECK - Return cached data if valid
@@ -259,43 +299,26 @@ def get_encounter_centric_patient_bundle(patient_id: str):
         })
         conditions = unwrap_bundle(conditions_bundle)
         
-        # Get medications
-        print(f"  [5/7] Fetching medications...")
-        medications_bundle = search_fhir_resource("MedicationRequest", {
+        # Get medication administrations
+        print(f"  [5/7] Fetching medication administrations...")
+        medications_bundle = search_fhir_resource("MedicationAdministration", {
             "patient": patient_id,
             "_count": "50"
         })
         medications = unwrap_bundle(medications_bundle)
-        
-        # Get allergies
-        print(f"  [6/7] Fetching allergies...")
-        allergies_bundle = search_fhir_resource("AllergyIntolerance", {
-            "patient": patient_id
-        })
-        allergies = unwrap_bundle(allergies_bundle)
-        
-        # Get immunizations
-        print(f"  [7/7] Fetching immunizations...")
-        immunizations_bundle = search_fhir_resource("Immunization", {
-            "patient": patient_id
-        })
-        immunizations = unwrap_bundle(immunizations_bundle)
-        
+
         # Optional: Get procedures (commented out to save time)
-        # procedures_bundle = search_fhir_resource("Procedure", {"patient": patient_id})
-        # procedures = unwrap_bundle(procedures_bundle)
-        procedures = []
-        
+        #procedures_bundle = search_fhir_resource("Procedure", {"subject": f"Patient/{patient_id}"})
+        #procedures = unwrap_bundle(procedures_bundle)
+
         # Build comprehensive bundle
         all_resources = (
             [patient] + 
             encounters + 
             observations + 
             conditions + 
-            medications + 
-            allergies + 
-            immunizations + 
-            procedures
+            medications  
+            #procedures
         )
         
         result = {
@@ -315,12 +338,56 @@ def get_encounter_centric_patient_bundle(patient_id: str):
     except Exception as e:
         raise Exception(f"Error fetching patient bundle: {str(e)}")
 
+def get_imaging_files_for_patient(patient_id: str) -> List[str]:
+    """
+    Get list of NIfTI imaging file URLs stored in GCS for a specific patient.
+
+    Filters out directory-level blobs.
+
+    Args:
+        patient_id (str): FHIR patient ID.
+
+    Returns:
+        List[str]: List of GCS URLs for imaging files.
+    """
+    if patient_id in _gcs_imaging_cache and _is_cache_valid(patient_id):
+        print(f"✓ [CACHE HIT] Imaging for {patient_id}")
+        return _gcs_imaging_cache[patient_id]
+
+    bucket_name = "mendai_ct_images"
+    prefix = f"Patient/{patient_id}/"
+
+    try:
+        client = storage.Client.from_service_account_json(CREDENTIALS_PATH)
+        bucket = client.bucket(bucket_name)
+        blobs = list(bucket.list_blobs(prefix=prefix))
+
+        imaging_files = [
+            f"https://storage.googleapis.com/{bucket_name}/{blob.name}"
+            for blob in blobs
+            if not blob.name.endswith("/")
+        ]
+
+        _gcs_imaging_cache[patient_id] = imaging_files
+        _cache_timestamps[patient_id] = datetime.now()
+
+        return imaging_files
+    except Exception as e:
+        raise Exception(f"Failed to fetch imaging files: {str(e)}")
+
 # -------------------------------
 # Normalization Functions
 # -------------------------------
 def normalize_fhir_bundle(bundle: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Normalize a FHIR bundle into a structured clinical data format.
+    Convert a FHIR bundle into a simplified, normalized dictionary structure.
+    Includes demographic data, clinical resources, and GCS imaging URLs.
+
+    Args:
+        bundle (dict): Raw FHIR Bundle.
+
+    Returns:
+        dict: Normalized patient clinical summary.
     """
     resources = unwrap_bundle(bundle)
     
@@ -346,7 +413,7 @@ def normalize_fhir_bundle(bundle: Dict[str, Any]) -> Dict[str, Any]:
         "birthDate": correct_fhir_date(patient.get("birthDate")),
         "age": calculate_age(patient.get("birthDate")),
         "gender": patient.get("gender"),
-        "maritalStatus": extract_codeable_concept(patient.get("maritalStatus")),
+        "maritalStatus": extract_marital_status(patient),
     }
     
     # Normalize clinical data
@@ -364,20 +431,13 @@ def normalize_fhir_bundle(bundle: Dict[str, Any]) -> Dict[str, Any]:
     ]
     
     patient_data["medications"] = [
-        extract_medication_info(med) 
-        for med in resource_map.get("MedicationRequest", [])
+        normalize_medication_administration(med) 
+        for med in resource_map.get("MedicationAdministration", [])
     ]
-    
-    patient_data["allergies"] = [
-        extract_codeable_concept(allergy.get("code")) 
-        for allergy in resource_map.get("AllergyIntolerance", [])
-    ]
-    
-    patient_data["immunizations"] = [
-        extract_codeable_concept(imm.get("vaccineCode")) 
-        for imm in resource_map.get("Immunization", [])
-    ]
-    
+
+    # Add imaging files (GCS lookup)
+    patient_data["imaging"] = get_imaging_files_for_patient(patient.get("id"))
+
     patient_data["lastUpdated"] = datetime.now().isoformat()
     
     return patient_data
@@ -453,15 +513,33 @@ def extract_codeable_concept(codeable_concept: Dict) -> str:
     
     return "Unknown"
 
-def normalize_encounter(encounter: Dict) -> Dict:
-    """Normalize encounter data."""
+def normalize_encounter(encounter: dict) -> dict:
+    """Normalize Encounter data with key clinical context (minimal version)."""
+    # Extract type
+    type_display = "Unknown"
+    if "type" in encounter and encounter["type"]:
+        codings = encounter["type"][0].get("coding", [])
+        if codings:
+            type_display = codings[0].get("display", codings[0].get("code", "Unknown"))
+
+    # Extract class
+    encounter_class = encounter.get("class", {}).get("display", encounter.get("class", {}).get("code", "Unknown"))
+
+    # Extract admit source
+    admit_source_display = "Unknown"
+    if "hospitalization" in encounter and "admitSource" in encounter["hospitalization"]:
+        coding = encounter["hospitalization"]["admitSource"].get("coding", [])
+        if coding:
+            admit_source_display = coding[0].get("display", coding[0].get("code", "Unknown"))
+
     return {
-        "id": encounter.get("id"),
-        "type": extract_codeable_concept(encounter.get("type", [{}])[0] if encounter.get("type") else {}),
+        "type": type_display,
+        "class": encounter_class,
         "status": encounter.get("status"),
+        "admitSource": admit_source_display,
         "date": correct_fhir_date(encounter.get("period", {}).get("start"), is_datetime=True),
-        "reason": extract_codeable_concept(encounter.get("reasonCode", [{}])[0] if encounter.get("reasonCode") else {})
     }
+
 
 def normalize_observation(observation: Dict) -> Dict:
     """Normalize observation data."""
@@ -477,33 +555,90 @@ def normalize_observation(observation: Dict) -> Dict:
         "date": correct_fhir_date(obs_date, is_datetime=True) if obs_date else None
     }
 
-def extract_medication_info(medication_request: Dict) -> Dict:
-    """Extract medication information."""
-    medication = medication_request.get("medicationCodeableConcept", {})
-    dosage = medication_request.get("dosageInstruction", [{}])[0] if medication_request.get("dosageInstruction") else {}
-    
+def normalize_procedure(proc: Dict) -> Dict:
+    code = proc.get("code", {}).get("coding", [{}])[0]
+    performed = proc.get("performedDateTime") or proc.get("performedPeriod", {}).get("start")
     return {
-        "name": extract_codeable_concept(medication),
-        "dosage": dosage.get("text", ""),
-        "frequency": dosage.get("timing", {}).get("code", {}).get("text", "")
+        "id": proc.get("id"),
+        "code": code.get("code"),
+        "description": code.get("display"),
+        "status": proc.get("status"),
+        "date": performed
     }
 
+def normalize_medication_administration(med: Dict) -> Dict:
+    """
+    Format a MedicationAdministration FHIR resource into a simplified structure.
+
+    Args:
+        med (dict): FHIR resource of type MedicationAdministration.
+
+    Returns:
+        dict: Formatted data with name, dosage, method, and time.
+    """
+    medication = med.get("medicationCodeableConcept", {})
+    dosage = med.get("dosage", {})
+    dose_info = dosage.get("dose", {})
+    method = dosage.get("method", {})
+
+    # Format dosage as "value unit", e.g., "18.80 units"
+    value = dose_info.get("value")
+    unit = dose_info.get("unit", "")
+    if isinstance(value, (int, float)):
+        value_str = f"{value:.2f}".rstrip("0").rstrip(".")
+        dosage_str = f"{value_str} {unit}".strip()
+    else:
+        dosage_str = unit or "Unknown"
+
+    return {
+        "id": med.get("id"),
+        "name": extract_codeable_concept(medication),  # e.g., "Acetaminophen-IV"
+        "dosage": dosage_str,                          # e.g., "18.8 units"
+        "method": method.get("coding", [{}])[0].get("code", "Unknown"),    # e.g., "Continuous Med"
+        "status": med.get("status"),
+        "effectiveTime": correct_fhir_date(med.get("effectiveDateTime") or med.get("effectivePeriod", {}).get("start"))
+    }
+
+def get_all_patient_conditions() -> List[Dict[str, Any]]:
+    """
+    Fetch all conditions across all patients in the FHIR store.
+    Returns:
+        List of dicts: [{patient_id, conditions: [text]}]
+    """
+    all_conditions = []
+    patient_ids = get_patient_subject_ids()
+
+    print(f"⟳ Fetching conditions for {len(patient_ids)} patients...")
+
+    for patient_id in patient_ids:
+        try:
+            conditions = get_conditions_for_patient(patient_id)
+            condition_texts = [extract_codeable_concept(cond.get("code")) for cond in conditions]
+            all_conditions.append({
+                "patient_id": patient_id,
+                "conditions": condition_texts
+            })
+        except Exception as e:
+            print(f"⚠ Failed to fetch conditions for patient {patient_id}: {str(e)}")
+
+    print(f"✓ Fetched condition data for {len(all_conditions)} patients")
+    return all_conditions
+
 # -------------------------------
-# MAIN CONVENIENCE FUNCTION - THIS WAS MISSING!
+# MAIN CONVENIENCE FUNCTION 
 # -------------------------------
 def get_patient_bundle_normalized(patient_id: str) -> Optional[Dict[str, Any]]:
     """
-    Get patient data bundle and return in normalized format.
-    This is a convenience function that combines fetching and normalization with caching.
-    
-    This is the PRIMARY function to use for getting patient data.
-    
+    Fetch and normalize a patient's data including demographics, encounters,
+    observations, conditions, medications, and imaging data.
+
+    Uses internal caching to improve performance.
+
     Args:
-        patient_id: FHIR patient identifier
-        
+        patient_id (str): FHIR patient ID.
+
     Returns:
-        dict: Normalized patient data with all clinical resources
-        None: If patient not found
+        dict or None: Normalized patient summary or None if not found.
     """
     try:
         # Check if we have normalized data cached
@@ -578,7 +713,7 @@ def get_conditions_for_patient(patient_id: str):
 def get_medications_for_patient(patient_id: str):
     """Get all medication requests for a patient."""
     try:
-        bundle = search_fhir_resource("MedicationRequest", {
+        bundle = search_fhir_resource("MedicationAdministration", {
             "patient": patient_id,
             "_count": "100"
         })
@@ -586,32 +721,19 @@ def get_medications_for_patient(patient_id: str):
     except Exception as e:
         raise Exception(f"Error fetching medications: {str(e)}")
 
-def get_allergies_for_patient(patient_id: str):
-    """Get all allergies for a patient."""
-    try:
-        bundle = search_fhir_resource("AllergyIntolerance", {
-            "patient": patient_id
-        })
-        return unwrap_bundle(bundle)
-    except Exception as e:
-        raise Exception(f"Error fetching allergies: {str(e)}")
-
-def get_immunizations_for_patient(patient_id: str):
-    """Get all immunizations for a patient."""
-    try:
-        bundle = search_fhir_resource("Immunization", {
-            "patient": patient_id
-        })
-        return unwrap_bundle(bundle)
-    except Exception as e:
-        raise Exception(f"Error fetching immunizations: {str(e)}")
-
 def get_procedures_for_patient(patient_id: str):
     """Get all procedures for a patient."""
     try:
         bundle = search_fhir_resource("Procedure", {
-            "patient": patient_id
+            "subject": f"Patient/{patient_id}"   
         })
         return unwrap_bundle(bundle)
     except Exception as e:
         raise Exception(f"Error fetching procedures: {str(e)}")
+
+def extract_marital_status(patient: dict) -> str:
+    """Extract marital status from Patient resource."""
+    coding_list = patient.get("maritalStatus", {}).get("coding", [])
+    if coding_list:
+        return coding_list[0].get("code", "Unknown")
+    return "Unknown"
