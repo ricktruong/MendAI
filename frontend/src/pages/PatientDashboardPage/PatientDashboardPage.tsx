@@ -9,6 +9,7 @@ import type { SliceAnalysisResponse, BatchAnalysisResponse, Finding, Recommendat
 import { getFindingIcon, getFindingColor, getRecommendationIcon, getRecommendationColor } from '../../types/ai-analysis';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 
 // Tab types for the dashboard
 type TabType = 'summary' | 'ct-analysis' | 'ai-results' | 'chat';
@@ -39,6 +40,7 @@ const PatientDashboardPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Load session from localStorage on component mount
   useEffect(() => {
@@ -112,11 +114,32 @@ const PatientDashboardPage: React.FC = () => {
   // Function to clear conversation
   const handleClearConversation = async () => {
     if (!sessionId) return;
-    
+
     const confirmClear = window.confirm('Are you sure you want to clear this conversation? This action cannot be undone.');
     if (!confirmClear) return;
-    
+
     try {
+      // First, clear the UI immediately
+      const patientId = patient?.fhirId || patient?.id;
+      if (patientId) {
+        const sessionKey = `chat_session_${patientId}`;
+        localStorage.removeItem(sessionKey);
+      }
+
+      // Reset to initial state immediately (optimistic update)
+      const initialMessage = {
+        id: '1',
+        type: 'assistant' as const,
+        content: patient
+          ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. I have access to their CT scan images and can help analyze them. What would you like to know about this patient?`
+          : "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today?",
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages([initialMessage]);
+      setSessionId('');
+
+      // Then call backend to delete the conversation
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/chat/history/${sessionId}`,
         {
@@ -129,34 +152,13 @@ const PatientDashboardPage: React.FC = () => {
       );
 
       if (response.ok) {
-        console.log('Conversation cleared successfully');
-        
-        // Clear session from localStorage
-        const patientId = patient?.fhirId || patient?.id;
-        if (patientId) {
-          const sessionKey = `chat_session_${patientId}`;
-          localStorage.removeItem(sessionKey);
-        }
-        
-        // Reset to initial state
-        setSessionId('');
-        setMessages([
-          {
-            id: '1',
-            type: 'assistant',
-            content: patient
-              ? `Hello! I'm MendAI, your AI healthcare assistant. I can see you're viewing ${patient.patientName || patient.patient_name}'s medical records. I have access to their CT scan images and can help analyze them. What would you like to know about this patient?`
-              : "Hello! I'm MendAI, your AI healthcare assistant. How can I help you today?",
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+        console.log('Conversation cleared successfully on backend');
       } else {
-        console.error('Failed to clear conversation');
-        alert('Failed to clear conversation. Please try again.');
+        console.error('Failed to clear conversation on backend, but UI already cleared');
       }
     } catch (error) {
       console.error('Error clearing conversation:', error);
-      alert('Error clearing conversation. Please try again.');
+      // UI is already cleared, so we just log the backend error
     }
   };
 
@@ -189,6 +191,9 @@ const PatientDashboardPage: React.FC = () => {
   const [loadingSliceAnalysis, setLoadingSliceAnalysis] = useState(false);
   const [sliceAnalysisError, setSliceAnalysisError] = useState<string | null>(null);
   const [generatedReport, setGeneratedReport] = useState<{ name: string; url: string; size: string } | null>(null);
+
+  // Findings collapse state - tracks which findings are expanded
+  const [expandedFindings, setExpandedFindings] = useState<Set<string>>(new Set());
 
   // Patient normalized data state
   const [patientNormalizedData, setPatientNormalizedData] = useState<any>(null);
@@ -413,6 +418,10 @@ const PatientDashboardPage: React.FC = () => {
       setMessages(prev => [...prev, fallbackResponse]);
     } finally {
       setIsLoading(false);
+      // Auto-focus the input after sending message
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
@@ -1329,7 +1338,9 @@ const PatientDashboardPage: React.FC = () => {
             </div>
 
             <div className="ct-viewer-container">
-              <div className="ct-viewer">
+              <PanelGroup direction="horizontal">
+                <Panel defaultSize={65} minSize={40}>
+                  <div className="ct-viewer">
                 {loadingImages ? (
                   <div className="loading-spinner">
                     <div className="spinner"></div>
@@ -1475,9 +1486,13 @@ const PatientDashboardPage: React.FC = () => {
                     <p>No CT scan images available for this patient.</p>
                   </div>
                 )}
-              </div>
-              
-              <div className="ct-sidebar">
+                  </div>
+                </Panel>
+
+                <PanelResizeHandle className="resize-handle" />
+
+                <Panel defaultSize={35} minSize={25} maxSize={50}>
+                  <div className="ct-sidebar">
               {/* Slice Analysis Section */}
               <div className="ct-info-card">
                 <h4>Slice Analysis</h4>
@@ -1515,39 +1530,74 @@ const PatientDashboardPage: React.FC = () => {
                     {/* Findings */}
                     <div className="findings-section">
                       <span className="findings-label">Findings</span>
-                      {sliceAnalysis.findings && sliceAnalysis.findings.map((finding: Finding, idx: number) => (
-                        <div key={finding.id || idx} className="finding-item" style={{ marginBottom: '10px', borderLeft: `3px solid ${getFindingColor(finding)}` }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '1.2rem' }}>{getFindingIcon(finding)}</span>
-                            <span className={`finding-type ${finding.type.toLowerCase()}`} style={{
-                              fontWeight: 'bold',
-                              color: getFindingColor(finding)
-                            }}>
-                              {finding.title}
-                            </span>
-                            <span className="finding-confidence" style={{
-                              marginLeft: 'auto',
-                              fontSize: '0.75rem',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              backgroundColor: finding.confidence > 0.8 ? '#d1fae5' : '#fed7aa',
-                              color: finding.confidence > 0.8 ? '#065f46' : '#92400e'
-                            }}>
-                              {Math.round(finding.confidence * 100)}%
-                            </span>
-                          </div>
-                          <div className="finding-desc" style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '6px' }}>
-                            {finding.description}
-                          </div>
-                          {finding.supporting_evidence && finding.supporting_evidence.length > 0 && (
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', paddingLeft: '12px' }}>
-                              {finding.supporting_evidence.map((evidence, i) => (
-                                <div key={i}>• {evidence}</div>
-                              ))}
+                      {sliceAnalysis.findings && sliceAnalysis.findings.map((finding: Finding, idx: number) => {
+                        const findingId = finding.id || `finding-${idx}`;
+                        const isExpanded = expandedFindings.has(findingId);
+
+                        return (
+                          <div key={findingId} className="finding-item" style={{ marginBottom: '10px', borderLeft: `3px solid ${getFindingColor(finding)}` }}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: isExpanded ? '6px' : '0',
+                                cursor: 'pointer',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                transition: 'background-color 0.2s'
+                              }}
+                              onClick={() => {
+                                const newExpanded = new Set(expandedFindings);
+                                if (isExpanded) {
+                                  newExpanded.delete(findingId);
+                                } else {
+                                  newExpanded.add(findingId);
+                                }
+                                setExpandedFindings(newExpanded);
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                              <span style={{ fontSize: '0.9rem', color: '#6b7280', minWidth: '20px' }}>
+                                {isExpanded ? '▼' : '▶'}
+                              </span>
+                              <span style={{ fontSize: '1.2rem' }}>{getFindingIcon(finding)}</span>
+                              <span className={`finding-type ${finding.type.toLowerCase()}`} style={{
+                                fontWeight: 'bold',
+                                color: getFindingColor(finding)
+                              }}>
+                                {finding.title}
+                              </span>
+                              <span className="finding-confidence" style={{
+                                marginLeft: 'auto',
+                                fontSize: '0.75rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: finding.confidence > 0.8 ? '#d1fae5' : '#fed7aa',
+                                color: finding.confidence > 0.8 ? '#065f46' : '#92400e'
+                              }}>
+                                {Math.round(finding.confidence * 100)}%
+                              </span>
                             </div>
-                          )}
-                        </div>
-                      ))}
+
+                            {isExpanded && (
+                              <>
+                                <div className="finding-desc" style={{ fontSize: '0.85rem', color: '#374151', marginBottom: '6px', padding: '0 8px' }}>
+                                  {finding.description}
+                                </div>
+                                {finding.supporting_evidence && finding.supporting_evidence.length > 0 && (
+                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', paddingLeft: '20px', paddingBottom: '8px' }}>
+                                    {finding.supporting_evidence.map((evidence, i) => (
+                                      <div key={i}>• {evidence}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Processing Info */}
@@ -1558,7 +1608,9 @@ const PatientDashboardPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              </div>
+                  </div>
+                </Panel>
+              </PanelGroup>
             </div>
           </div>
         );
@@ -1948,10 +2000,11 @@ const PatientDashboardPage: React.FC = () => {
               <div className="chat-input-container">
                 <div className="chat-input">
                   <textarea
+                    ref={inputRef}
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder={patient 
+                    placeholder={patient
                       ? `Ask me about ${patient.patientName || patient.patient_name}'s CT scan or medical condition...`
                       : "Ask me about medical analysis or patient data..."
                     }
