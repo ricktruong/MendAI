@@ -811,101 +811,206 @@ const PatientDashboardPage: React.FC = () => {
       // Simulate API call for PDF generation
       await new Promise(resolve => setTimeout(resolve, 2000));
 
+      // Helper function to clean text for PDF rendering
+      const cleanTextForPdf = (text: string): string => {
+        if (!text) return '';
+        return text
+          // Replace special dashes with regular hyphen
+          .replace(/[\u2010-\u2015]/g, '-')  // Various dashes
+          .replace(/[\u2212]/g, '-')          // Minus sign
+          // Replace curly quotes with straight quotes
+          .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+          .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+          // Replace special spaces and zero-width characters
+          .replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000\uFEFF]/g, ' ')
+          // Replace ellipsis
+          .replace(/\u2026/g, '...')
+          // Replace multiplication and division signs
+          .replace(/\u00D7/g, 'x')
+          .replace(/\u00F7/g, '/')
+          // Remove soft hyphens
+          .replace(/\u00AD/g, '')
+          // Remove control characters and other problematic Unicode
+          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+          // Remove combining diacritical marks that might cause issues
+          .replace(/[\u0300-\u036F]/g, '')
+          // Normalize unicode (decomposed to composed)
+          .normalize('NFC')
+          // Normalize multiple spaces
+          .replace(/\s+/g, ' ')
+          .trim();
+      };
+
+      // Helper function to safely add text with width constraint
+      const addText = (text: string, x: number, yPos: number, width?: number) => {
+        const cleanedText = cleanTextForPdf(text);
+        if (width) {
+          const lines = doc.splitTextToSize(cleanedText, width);
+          doc.text(lines, x, yPos);
+          return lines.length;
+        } else {
+          doc.text(cleanedText, x, yPos);
+          return 1;
+        }
+      };
+
       // Create PDF using jsPDF
       const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const maxWidth = pageWidth - margin * 2;
+      let y = 25;
 
-      // Title
-      doc.setFontSize(18);
-      doc.text('MendAI - AI Analysis Report', 20, 30);
+      // Header with line separator
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      doc.text('AI MEDICAL IMAGING ANALYSIS REPORT', margin, y);
+      y += 5;
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 15;
 
-      // Patient Information
-      doc.setFontSize(14);
-      doc.text('Patient Information:', 20, 50);
+      // Patient Information Section
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('PATIENT INFORMATION', margin, y);
+      y += 8;
 
-      doc.setFontSize(11);
-      let y = 65;
-      doc.text(`Patient Name: ${patient.patientName || patient.patient_name}`, 25, y);
-      doc.text(`Patient ID: ${patient.id}`, 25, y + 10);
-      doc.text(`File Name: ${batchAnalysisResult.metadata.file_name}`, 25, y + 20);
-      doc.text(`Slices Analyzed: ${batchAnalysisResult.metadata.slice_range.start} - ${batchAnalysisResult.metadata.slice_range.end}`, 25, y + 30);
-      doc.text(`Report Generated: ${new Date().toLocaleString()}`, 25, y + 40);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
 
-      // Overall Summary
-      y += 60;
-      doc.setFontSize(14);
-      doc.text('Overall Summary:', 20, y);
-      y += 10;
-      doc.setFontSize(11);
-      const maxWidth = 150;
-      const summaryLines = doc.splitTextToSize(batchAnalysisResult.overall_summary.content, maxWidth);
-      doc.text(summaryLines, 25, y);
-      y += summaryLines.length * 6 + 10;
+      const linesUsed1 = addText(`Name: ${patient.patientName || patient.patient_name}`, margin + 5, y, maxWidth - 10);
+      y += linesUsed1 * 6;
 
-      // Findings
-      doc.setFontSize(14);
-      doc.text('Key Findings:', 20, y);
-      y += 10;
+      const linesUsed2 = addText(`Patient ID: ${patient.id}`, margin + 5, y, maxWidth - 10);
+      y += linesUsed2 * 6;
 
-      doc.setFontSize(11);
+      const linesUsed3 = addText(`Date of Report: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, margin + 5, y, maxWidth - 10);
+      y += linesUsed3 * 6 + 6;
+
+      // Study Information Section
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('STUDY INFORMATION', margin, y);
+      y += 8;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+
+      const linesUsed4 = addText(`File: ${batchAnalysisResult.metadata.file_name}`, margin + 5, y, maxWidth - 10);
+      y += linesUsed4 * 6;
+
+      const linesUsed5 = addText(`Slices Analyzed: ${batchAnalysisResult.metadata.slice_range.start} - ${batchAnalysisResult.metadata.slice_range.end}`, margin + 5, y, maxWidth - 10);
+      y += linesUsed5 * 6;
+
+      const linesUsed6 = addText(`Total Slices Analyzed: ${batchAnalysisResult.metadata.slice_range.total_analyzed}`, margin + 5, y, maxWidth - 10);
+      y += linesUsed6 * 6;
+
+      const linesUsed7 = addText(`Processing Time: ${batchAnalysisResult.metadata.processing_time_ms}ms`, margin + 5, y, maxWidth - 10);
+      y += linesUsed7 * 6 + 6;
+
+      // Overall Summary Section
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('CLINICAL SUMMARY', margin, y);
+      y += 8;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const summaryLinesCount = addText(batchAnalysisResult.overall_summary.content, margin + 5, y, maxWidth - 10);
+      y += summaryLinesCount * 5 + 12;
+
+      // Key Findings Section
+      if (y > 240) {
+        doc.addPage();
+        y = 25;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.text('KEY FINDINGS', margin, y);
+      y += 8;
+
       batchAnalysisResult.findings.forEach((finding, index) => {
-        if (y > 250) {
+        if (y > 240) {
           doc.addPage();
-          y = 30;
+          y = 25;
         }
 
-        doc.setFontSize(12);
-        doc.text(`${index + 1}. ${finding.title}`, 25, y);
-        y += 8;
+        // Finding title
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        const titleLines = addText(`${index + 1}. ${finding.title}`, margin + 5, y, maxWidth - 10);
+        y += titleLines * 7;
 
+        // Finding metadata
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        const metaLines = addText(`Type: ${finding.type}  |  Severity: ${finding.severity}  |  Confidence: ${Math.round(finding.confidence * 100)}%`, margin + 10, y, maxWidth - 20);
+        y += metaLines * 5 + 1;
+
+        // Finding description
         doc.setFontSize(10);
-        doc.text(`Type: ${finding.type} | Severity: ${finding.severity} | Confidence: ${Math.round(finding.confidence * 100)}%`, 30, y);
-        y += 8;
-
-        const descLines = doc.splitTextToSize(finding.description, maxWidth - 10);
-        doc.text(descLines, 30, y);
-        y += descLines.length * 5 + 8;
+        const descLines = addText(finding.description, margin + 10, y, maxWidth - 20);
+        y += descLines * 5 + 8;
       });
 
-      // Recommendations
+      // Recommendations Section
       if (batchAnalysisResult.recommendations.length > 0) {
-        if (y > 200) {
+        if (y > 220) {
           doc.addPage();
-          y = 30;
+          y = 25;
         }
 
-        doc.setFontSize(14);
-        doc.text('Recommendations:', 20, y);
-        y += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text('CLINICAL RECOMMENDATIONS', margin, y);
+        y += 8;
 
-        doc.setFontSize(11);
         batchAnalysisResult.recommendations.forEach((rec, index) => {
-          if (y > 250) {
+          if (y > 240) {
             doc.addPage();
-            y = 30;
+            y = 25;
           }
 
-          doc.setFontSize(12);
-          doc.text(`${index + 1}. ${rec.title}`, 25, y);
-          y += 8;
+          // Recommendation title
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          const recTitleLines = addText(`${index + 1}. ${rec.title}`, margin + 5, y, maxWidth - 10);
+          y += recTitleLines * 7;
 
+          // Recommendation metadata
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          const recMetaLines = addText(`Priority: ${rec.priority}  |  Urgency: ${rec.urgency}`, margin + 10, y, maxWidth - 20);
+          y += recMetaLines * 5 + 1;
+
+          // Recommendation description
           doc.setFontSize(10);
-          doc.text(`Priority: ${rec.priority} | Urgency: ${rec.urgency}`, 30, y);
-          y += 6;
-
-          const recLines = doc.splitTextToSize(rec.description, maxWidth - 10);
-          doc.text(recLines, 30, y);
-          y += recLines.length * 5 + 8;
+          const recDescLines = addText(rec.description, margin + 10, y, maxWidth - 20);
+          y += recDescLines * 5 + 8;
         });
       }
 
-      // Footer
-      if (y > 250) {
-        doc.addPage();
-        y = 30;
+      // Footer Section
+      const totalPages = doc.internal.pages.length - 1;
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+
+        // Bottom border line
+        doc.setLineWidth(0.3);
+        doc.line(margin, 280, pageWidth - margin, 280);
+
+        // Footer text
+        doc.text('MendAI Medical Imaging Analysis System', margin, 287);
+        doc.text(`Model: ${batchAnalysisResult.metadata.model_version}`, pageWidth / 2 - 20, 287);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, 287);
+
+        doc.setTextColor(0, 0, 0);
       }
-      doc.setFontSize(9);
-      doc.text('Generated by MendAI System', 20, y + 20);
-      doc.text(`Model Version: ${batchAnalysisResult.metadata.model_version}`, 20, y + 30);
 
       // Generate blob and download info
       const pdfBlob = doc.output('blob');

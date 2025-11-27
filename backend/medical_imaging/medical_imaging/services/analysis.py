@@ -1,5 +1,7 @@
 import os
 import time
+import re
+import json
 from typing import Optional, List
 from datetime import datetime
 import structlog
@@ -21,6 +23,37 @@ from common.types.ai_analysis import (
 )
 
 logger = structlog.get_logger()
+
+
+def clean_json_response(response_text: str) -> str:
+    """
+    Clean OpenAI response by removing markdown code block markers and other artifacts.
+
+    Args:
+        response_text: Raw response text from OpenAI
+
+    Returns:
+        Cleaned JSON string
+    """
+    if not response_text:
+        return response_text
+
+    # Remove markdown code block markers (```json ... ``` or ``` ... ```)
+    # Pattern matches optional language identifier after opening backticks
+    cleaned = re.sub(r'^```(?:json)?\s*\n?', '', response_text.strip())
+    cleaned = re.sub(r'\n?```\s*$', '', cleaned)
+
+    # Remove any leading/trailing whitespace
+    cleaned = cleaned.strip()
+
+    # Try to validate it's proper JSON
+    try:
+        json.loads(cleaned)
+        return cleaned
+    except json.JSONDecodeError as e:
+        logger.warning(f"Cleaned response is still not valid JSON: {e}")
+        logger.debug(f"Cleaned content: {cleaned[:500]}...")
+        return cleaned
 
 
 class MedicalImageAnalysisService:
@@ -66,14 +99,29 @@ class MedicalImageAnalysisService:
         # Call OpenAI API with structured output
         try:
             image_format = "jpeg"  # Default to JPEG for better compression
-            
+
             response = self.client.responses.parse(
                 model=self.model,
                 instructions=SINGLE_SLICE_ANALYSIS_TEMPLATE,
                 input=f"data:image/{image_format};base64,{image_data}",
                 text_format=RawSliceAnalysisOutput
             )
-            raw_analysis = response.output_parsed
+
+            # Check if we need to manually parse the response
+            if hasattr(response, 'output_parsed') and response.output_parsed:
+                raw_analysis = response.output_parsed
+            elif hasattr(response, 'output_text'):
+                # Fallback: manually parse if structured output failed
+                cleaned_text = clean_json_response(response.output_text)
+                logger.info(f"Manually parsing response text for slice {slice_number}")
+                raw_analysis = RawSliceAnalysisOutput.model_validate_json(cleaned_text)
+            else:
+                raise ValueError("OpenAI response missing both output_parsed and output_text")
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            logger.error(f"Response content: {response.output_text[:500] if hasattr(response, 'output_text') else 'N/A'}")
+            raise ValueError(f"Failed to parse AI response: {str(e)}")
         except Exception as e:
             logger.error(f"Error calling OpenAI API: {e}")
             raise e
@@ -129,13 +177,13 @@ class MedicalImageAnalysisService:
                     "role": "user",
                     "content": [
                         {
-                            "type": "input_image", 
+                            "type": "input_image",
                             "image_url": f"data:image/jpeg;base64,{img_data}"   # Default to JPEG for better compression
                         } for img_data in image_slices
                     ]
                 }
             ]
-            
+
             # For batch analysis, we need to send multiple images
             # OpenAI responses.parse can handle multiple images in the input
             response = self.client.responses.parse(
@@ -144,7 +192,22 @@ class MedicalImageAnalysisService:
                 input=formatted_images,  # List of image data URIs
                 text_format=RawBatchAnalysisOutput
             )
-            raw_analysis = response.output_parsed
+
+            # Check if we need to manually parse the response
+            if hasattr(response, 'output_parsed') and response.output_parsed:
+                raw_analysis = response.output_parsed
+            elif hasattr(response, 'output_text'):
+                # Fallback: manually parse if structured output failed
+                cleaned_text = clean_json_response(response.output_text)
+                logger.info(f"Manually parsing batch response text for slices {slice_start}-{slice_end}")
+                raw_analysis = RawBatchAnalysisOutput.model_validate_json(cleaned_text)
+            else:
+                raise ValueError("OpenAI response missing both output_parsed and output_text")
+
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            logger.error(f"Response content: {response.output_text[:500] if hasattr(response, 'output_text') else 'N/A'}")
+            raise ValueError(f"Failed to parse AI response: {str(e)}")
         except Exception as e:
             logger.error(f"Error calling OpenAI API for batch analysis: {e}")
             raise e
