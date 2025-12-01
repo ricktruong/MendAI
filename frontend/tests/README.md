@@ -145,8 +145,8 @@ docker-compose restart       # Restart services
 ## Documentation
 
 For detailed documentation, see:
-- `E2E_TESTING_GUIDE.md` (project root)
-- `FULL_E2E_IMPLEMENTATION_CHECKLIST.md` (project root)
+- `e2e-docs/E2E_TESTING_GUIDE.md` (project root)
+- `e2e-docs/FULL_E2E_IMPLEMENTATION_CHECKLIST.md` (project root)
 
 ## Support
 

@@ -715,10 +715,10 @@ npm run test:e2e:report
 - Frontend Load: 1.5s (target: <5s)
 
 **Documentation**:
-- [Testing Quick Start](TESTING_QUICKSTART.md) - 5-minute guide
-- [Testing Certification](TESTING_CERTIFICATION.md) - Full certification report
-- [E2E Testing Guide](E2E_TESTING_GUIDE.md) - Complete testing guide
-- [Test Results Summary](TEST_RESULTS_SUMMARY.md) - Detailed results
+- [Testing Quick Start](e2e-docs/TESTING_QUICKSTART.md) - 5-minute guide
+- [Testing Certification](e2e-docs/TESTING_CERTIFICATION.md) - Full certification report
+- [E2E Testing Guide](e2e-docs/E2E_TESTING_GUIDE.md) - Complete testing guide
+- [Test Results Summary](e2e-docs/TEST_RESULTS_SUMMARY.md) - Detailed results
 
 **Prerequisites**:
 ```bash
