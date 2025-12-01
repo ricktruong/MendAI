@@ -1,46 +1,43 @@
-# MendAI: A Multimodal AI Assistant for Smarter Clinical Decision-Making
+# MendAI: AI-Powered Clinical Decision Support System
 
-MendAI, your agentic AI healthcare assistant, seamlessly integrates with your hospital's EHR system, patients' data, medical scans, laboratory results, and clinical text, to give to healthcare professionals like you AI-assisted patient prognosis all within one seamless, integrated medical workflow solution.
+MendAI is an intelligent healthcare assistant that integrates seamlessly with hospital EHR systems, patient data, medical imaging, laboratory results, and clinical documentation. It provides healthcare professionals with AI-assisted diagnostic insights within a unified workflow.
 
-## 🎯 Key Features
+## Overview
 
-### 🧠 Intelligent Conversation Memory
-- **Persistent Chat History**: AI remembers your entire conversation with each patient
-- **Auto-Restoration**: Conversations persist across page refreshes and navigation
-- **Smart Context Management**: Token-aware context window (max 2000 tokens)
-- **Session Isolation**: Separate conversation history for each patient
-- **User Controls**: Clear conversation button with confirmation dialog
-- **24-Hour Session TTL**: Automatic cleanup of expired sessions
+MendAI leverages advanced AI technologies to enhance clinical decision-making through real-time patient data analysis, medical imaging interpretation, and natural language interaction. The system combines FHIR-compliant data management with state-of-the-art language models to deliver contextual, patient-specific insights.
 
-### ⚡ High-Performance Pagination
-- **Fast Initial Load**: Only 20 patients loaded by default (vs 100 previously)
-- **Flexible Page Sizes**: Choose 10, 20, 50, or 100 patients per page
-- **Rich Navigation**: First/Previous/Next/Last buttons with page numbers
-- **Smart Page Range**: Displays 5 page numbers with intelligent positioning
-- **Performance**: 80% reduction in initial page load time (1-2s vs 5-10s)
+## Key Features
 
-### 🏥 Patient Data Management
-- **FHIR Integration**: Google Healthcare API for standardized patient data
-- **Comprehensive Search**: Search across all patient fields
-- **Bulk Operations**: Add, edit, and delete patient records
-- **File Management**: Upload and manage patient files and attachments
-- **Age Calculation**: Corrected FHIR date handling with proper age display
+### Intelligent Conversation System
+- **Persistent Context**: Maintains conversation history throughout patient sessions
+- **Session Management**: Automatic 24-hour session lifecycle with cleanup
+- **Smart Memory**: Token-optimized context window (2000 tokens max)
+- **Patient Isolation**: Separate conversation threads for each patient
+- **User Control**: Manual conversation clearing with confirmation
 
-### 🔬 Medical Imaging Analysis
-- **DICOM Processing**: CT scan analysis with AI-powered insights
-- **Batch Analysis**: Process multiple images simultaneously
-- **Base64 Support**: Direct image display in the frontend
-- **Slice-Based Analysis**: Detailed examination of scan slices
+### High-Performance Patient Management
+- **Optimized Loading**: Default 20-patient pagination (80% faster than bulk loading)
+- **Flexible Views**: Configurable page sizes (10/20/50/100 patients)
+- **Intuitive Navigation**: Full pagination controls with smart page ranges
+- **Fast Search**: Real-time patient search across all fields
+- **CRUD Operations**: Complete patient record management
 
-### 🤖 AI-Powered Clinical Assistant
-- **GPT-4o-mini Integration**: Advanced OpenAI model for medical queries
-- **Clinical Context**: Dan's specialized clinical prompt for accurate responses
-- **Real-Time Chat**: Instant responses to medical questions
-- **Patient-Specific Context**: AI receives full patient FHIR data for contextual answers
+### Medical Imaging Analysis
+- **NIfTI Support**: CT scan processing and analysis (NIfTI format)
+- **Batch Processing**: Multi-image analysis capabilities
+- **Slice Analysis**: Detailed examination of individual scan slices
+- **AI Integration**: MONAI-powered medical image interpretation
+- **Visual Display**: Base64-encoded image rendering in browser
 
-## 🏗️ Architecture
+### Clinical AI Assistant
+- **GPT-4o Integration**: Advanced language model for medical queries
+- **Contextual Responses**: Full access to patient FHIR data
+- **Real-Time Chat**: Instant responses to clinical questions
+- **Specialized Prompts**: Clinical knowledge-optimized prompting
 
-## 🏗️ Architecture
+## Architecture
+
+MendAI follows a microservices architecture with dedicated services for different functionalities:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -67,416 +64,350 @@ MendAI, your agentic AI healthcare assistant, seamlessly integrates with your ho
 │         │ │              │ │              │ │              │
 │Port 8001│ │Port 8002     │ │Port 8003     │ │Max 2000      │
 │         │ │              │ │              │ │tokens        │
-│FHIR API │ │DICOM/MONAI   │ │GPT-4o-mini   │ │24hr TTL      │
+│FHIR API │ │NIfTI/MONAI   │ │GPT-4o-mini   │ │24hr TTL      │
 └─────────┘ └──────────────┘ └──────────────┘ └──────────────┘
 ```
 
-**Key Components:**
-- **Frontend**: React 18 + TypeScript + Vite for fast, type-safe UI
-- **API Gateway**: FastAPI engine orchestrating all backend services
-- **Conversation Manager**: Session-based memory with intelligent context management
-- **Patient Data**: FHIR-compliant patient information with pagination
-- **Medical Imaging**: AI-powered scan analysis with MONAI framework
-- **Biomedical LLM**: OpenAI GPT-4o-mini with clinical prompt engineering
+### Components
 
-## 📁 Project Structure
+- **Frontend**: React 18 + TypeScript + Vite
+- **API Gateway**: FastAPI engine with service orchestration
+- **Patient Data Service**: FHIR-compliant patient information management
+- **Medical Imaging Service**: MONAI-powered medical image analysis (NIfTI)
+- **Biomedical LLM Service**: GPT-4o-mini with clinical prompting
+- **Conversation Manager**: Session-based context retention
+
+## Project Structure
 
 ```
-Project/
-├── frontend/                # React + Vite + TypeScript
+MendAI/
+├── frontend/                # React application
 │   ├── src/                 # Source code
 │   ├── Dockerfile           # Frontend container
-│   └── nginx.conf           # Nginx configuration
+│   └── nginx.conf           # Web server configuration
 ├── backend/
-│   ├── engine/              # Main backend engine (API gateway, routing)
-│   ├── patient_data/        # Patient data service (Epic FHIR integration)
-│   ├── medical_imaging/     # Medical imaging service (MONAI)
-│   ├── biomedical_llm/      # LLM service (MONAI + Transformers)
-│   └── common/              # Shared code and utilities
-├── docker-compose.yml       # Complete application orchestration
-├── Makefile                 # Management commands
+│   ├── engine/              # API gateway and routing
+│   ├── patient_data/        # FHIR data service
+│   ├── medical_imaging/     # Medical image processing service (NIfTI)
+│   ├── biomedical_llm/      # Language model service
+│   └── common/              # Shared utilities
+├── docker-compose.yml       # Container orchestration
+├── Makefile                 # Build and management commands
 └── README.md               # This file
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 **Required:**
-- **Docker Desktop** (v20.10+) - [Download here](https://www.docker.com/products/docker-desktop)
-- **Docker Compose** (v2.0+) - Included with Docker Desktop
-- **Git** - For cloning the repository
+- Docker Desktop (v20.10+) - [Download](https://www.docker.com/products/docker-desktop)
+- Docker Compose (v2.0+) - Included with Docker Desktop
+- Git - For repository cloning
 
 **Optional (for local development):**
-- **Python 3.9+** - Backend development
-- **Node.js 18+** - Frontend development
-- **Poetry** - Python dependency management: `curl -sSL https://install.python-poetry.org | python3 -`
+- Python 3.9+ - Backend development
+- Node.js 18+ - Frontend development
+- Poetry - Python dependency management
 
-**Environment Setup:**
-- **OpenAI API Key** - Required for LLM functionality
-- **Google Cloud Credentials** - Required for FHIR data access
+**Configuration Requirements:**
+- OpenAI API Key - Required for LLM functionality
+- Google Cloud Credentials - Required for FHIR data access
 
-### Option 1: Docker (Recommended for Production)
+### Installation
 
-#### 1. Clone and Setup
+#### Docker Deployment (Recommended)
 
+1. **Clone Repository**
 ```bash
-# Clone the repository
 git clone https://github.com/ricktruong/MendAI.git
 cd MendAI
+```
 
-# Run automated setup script
+2. **Run Setup Script**
+```bash
 chmod +x setup.sh
 ./setup.sh
 ```
 
-**What the setup script does:**
-- ✅ Checks all prerequisites (Docker, Node.js, Python, Poetry)
-- ✅ Fixes common Docker issues and cleans build cache
-- ✅ Creates environment files for all services
-- ✅ Installs backend dependencies (Poetry)
-- ✅ Installs frontend dependencies (npm)
-- ✅ Validates project structure
-- ✅ Optionally tests Docker builds
+The setup script will:
+- Verify prerequisites (Docker, Node.js, Python, Poetry)
+- Clean Docker cache and resolve common issues
+- Generate environment configuration files
+- Install backend dependencies via Poetry
+- Install frontend dependencies via npm
+- Validate project structure
+- Optionally test Docker builds
 
-#### 2. Configure Environment Variables
+3. **Configure Environment**
 
-Edit the generated environment files with your credentials:
+Edit environment files with your credentials:
 
 ```bash
-# Backend Engine - OpenAI API Key required
+# Backend Engine - OpenAI API Key
 nano backend/engine/.env
+# Add: OPENAI_API_KEY=sk-your-api-key-here
 
-# Add your OpenAI API key:
-OPENAI_API_KEY=sk-your-api-key-here
-
-# Patient Data Service - Google Cloud credentials required
+# Patient Data Service - Google Cloud
 nano backend/patient_data/.env
-
-# Set your Google Cloud project and credentials path:
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+# Add: GOOGLE_CLOUD_PROJECT=your-project-id
+#      GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ```
 
-#### 3. Start All Services
-
+4. **Start Services**
 ```bash
-# Build and start all services
 make build
 make up
 
-# Or combine in one command:
-make build up
-
-# View logs to verify all services started correctly
+# View logs
 make logs
 ```
 
-#### 4. Access the Application
+5. **Access Application**
+- Frontend: http://localhost:3000
+- API Documentation: http://localhost:8000/docs
+- Patient Data API: http://localhost:8001/docs
+- Biomedical LLM API: http://localhost:8003/docs
 
-- **Frontend**: http://localhost:3000
-- **API Documentation**: http://localhost:8000/docs
-- **Patient Data API**: http://localhost:8001/docs
-- **Biomedical LLM API**: http://localhost:8003/docs
-
-#### 5. Verify Service Health
-
+6. **Verify Health**
 ```bash
-# Check all service health endpoints
 make health
 
 # Or manually:
 curl http://localhost:8000/health  # Engine
 curl http://localhost:8001/health  # Patient Data
 curl http://localhost:8003/health  # Biomedical LLM
-curl http://localhost:3000/        # Frontend
 ```
 
-#### Management Commands
+#### Local Development
 
-```bash
-make help          # Show all available commands
-make build         # Build all Docker images
-make up            # Start all services
-make down          # Stop all services
-make restart       # Restart all services
-make logs          # View logs from all services
-make logs-engine   # View engine service logs
-make logs-frontend # View frontend logs
-make status        # Check service status
-make health        # Check service health endpoints
-make clean         # Remove containers and volumes
-```
+For active development with hot-reload:
 
-**GPU Support (Optional - for AI/ML acceleration):**
-
-If you have an NVIDIA GPU and want to accelerate AI processing:
-
-```bash
-# Install NVIDIA Docker Runtime first:
-# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
-
-# Build and run with GPU support
-make gpu-build
-make gpu-up
-```
-
-### Option 2: Local Development (Recommended for Development)
-
-Perfect for active development with hot-reload capabilities.
-
-#### 1. Clone and Setup
-
+1. **Clone and Setup**
 ```bash
 git clone https://github.com/ricktruong/MendAI.git
 cd MendAI
-
-# Run setup script to prepare environment
 ./setup.sh
 ```
 
-#### 2. Configure Environment Variables
+2. **Start Backend Services** (4 separate terminals)
 
-Same as Docker setup - edit environment files in each service directory.
-
-#### 3. Start Backend Services
-
-Open **4 separate terminal windows** and run each service:
-
-**Terminal 1 - Patient Data Service:**
+Terminal 1 - Patient Data Service:
 ```bash
 cd backend/patient_data
 poetry install
 poetry run uvicorn patient_data.main:app --port 8001 --reload
 ```
 
-**Terminal 2 - Biomedical LLM Service:**
+Terminal 2 - Biomedical LLM Service:
 ```bash
 cd backend/biomedical_llm
 poetry install
-
-# Set environment variable for patient data service URL
 export PATIENT_DATA_URL=http://localhost:8001
-
 poetry run uvicorn biomedical_llm.main:app --port 8003 --reload
 ```
 
-**Terminal 3 - Engine Service (Main API Gateway):**
+Terminal 3 - Engine Service:
 ```bash
 cd backend/engine
 poetry install
-
-# Set environment variables for other services
 export PATIENT_DATA_SERVICE_URL=http://localhost:8001
 export BIOMEDICAL_LLM_URL=http://localhost:8003
-
 poetry run uvicorn engine.main:app --port 8000 --reload
 ```
 
-**Terminal 4 - Frontend:**
+Terminal 4 - Frontend:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-#### 4. Access the Application
+3. **Access Application**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000/docs
 
-- **Frontend**: http://localhost:3000
-- **Backend API Docs**: http://localhost:8000/docs
-
-**Why Local Development?**
-- ✅ Instant hot-reload on code changes
-- ✅ Better debugging with direct terminal output
-- ✅ Faster iteration cycle
-- ✅ Direct access to logs and errors
-- ✅ No Docker build time
-
-### Quick Test
-
-Once services are running, test the key features:
+### Management Commands
 
 ```bash
-# 1. Test patient list with pagination
-curl http://localhost:8000/api/v0/dashboard?page=1&page_size=20
-
-# 2. Test conversation memory (requires session_id from chat)
-curl http://localhost:8000/api/v0/chat/stats
-
-# 3. Access frontend and try:
-#    - Load patient list (should be fast with pagination)
-#    - Click a patient to open dashboard
-#    - Ask a question in chat
-#    - Refresh page (conversation should persist)
-#    - Ask follow-up question (AI should remember context)
+make help          # Display all available commands
+make build         # Build Docker images
+make up            # Start all services
+make down          # Stop all services
+make restart       # Restart all services
+make logs          # View all service logs
+make logs-engine   # View engine logs
+make logs-frontend # View frontend logs
+make status        # Check service status
+make health        # Verify service health
+make clean         # Remove containers and volumes
 ```
 
-## 🔧 Services & Ports
+### GPU Support (Optional)
+
+For AI/ML acceleration with NVIDIA GPU:
+
+```bash
+# Install NVIDIA Docker Runtime:
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+
+make gpu-build
+make gpu-up
+```
+
+## Services & Ports
 
 ### Frontend (Port 3000)
-- **Technology**: React 18 + TypeScript + Vite
-- **Features**:
-  - Patient list with pagination controls
-  - Patient dashboard with real-time chat
-  - Conversation memory with localStorage persistence
-  - Responsive design for healthcare workflows
-  - Hot module replacement in development
+**Technology**: React 18 + TypeScript + Vite
+
+**Features**:
+- Paginated patient list with configurable page sizes
+- Real-time patient dashboard with integrated chat
+- Persistent conversation memory via localStorage
+- Responsive healthcare workflow design
+- Hot module replacement in development
 
 ### Backend Engine (Port 8000)
-- **Technology**: FastAPI + Python 3.9+
-- **Features**:
-  - API gateway and request routing
-  - Conversation Manager with session storage
-  - Pagination endpoint for patient list
-  - Health monitoring and status checks
-  - Service orchestration
-  - Auto-reload in development mode
+**Technology**: FastAPI + Python 3.9+
 
-**Key Endpoints:**
+**Features**:
+- API gateway and request routing
+- Session-based conversation management
+- Pagination logic for patient data
+- Service orchestration and health monitoring
+
+**Key Endpoints**:
 - `GET /api/v0/dashboard?page=1&page_size=20` - Paginated patient list
-- `POST /api/v0/chat` - Send chat message with conversation memory
-- `GET /api/v0/chat/history/{session_id}` - Retrieve conversation history
+- `POST /api/v0/chat` - Chat with conversation memory
+- `GET /api/v0/chat/history/{session_id}` - Retrieve conversation
 - `DELETE /api/v0/chat/history/{session_id}` - Clear conversation
-- `GET /api/v0/chat/stats` - System-wide conversation statistics
+- `GET /api/v0/chat/stats` - Conversation statistics
 - `GET /health` - Service health check
 
 ### Patient Data Service (Port 8001)
-- **Technology**: FastAPI + Google Healthcare FHIR API
-- **Features**:
-  - FHIR-compliant patient data access
-  - Patient record CRUD operations
-  - Biometric data management
-  - Medical history tracking
-  - Corrected age calculation (FHIR date handling)
-  - Secure credential management
+**Technology**: FastAPI + Google Healthcare FHIR API
 
-**Key Endpoints:**
+**Features**:
+- FHIR-compliant patient data access
+- Patient record CRUD operations
+- Biometric and medical history management
+- Corrected FHIR date handling for accurate age calculation
+
+**Key Endpoints**:
 - `GET /api/v0/patients` - List all patients
 - `GET /api/v0/patients/{id}` - Get patient details
-- `POST /api/v0/patients` - Create new patient
+- `POST /api/v0/patients` - Create patient
 - `PUT /api/v0/patients/{id}` - Update patient
 - `DELETE /api/v0/patients/{id}` - Delete patient
 - `GET /health` - Service health check
 
 ### Medical Imaging Service (Port 8002)
-- **Technology**: FastAPI + MONAI + PyTorch
-- **Features**:
-  - DICOM file processing and conversion
-  - CT scan segmentation and analysis
-  - Batch image processing
-  - Slice-based analysis
-  - Base64 image encoding for frontend
-  - AI-powered disease detection
+**Technology**: FastAPI + MONAI + PyTorch
 
-**Key Endpoints:**
+**Features**:
+- NIfTI file processing and conversion
+- CT scan segmentation and analysis
+- Batch and slice-based image processing
+- Base64 image encoding for frontend display
+- AI-powered disease detection
+
+**Key Endpoints**:
 - `POST /api/v0/imaging/analyze` - Analyze medical images
-- `POST /api/v0/imaging/batch` - Batch image processing
-- `POST /api/v0/imaging/convert` - DICOM conversion
+- `POST /api/v0/imaging/batch` - Batch processing
+- `POST /api/v0/imaging/convert` - Medical image conversion
 - `GET /health` - Service health check
 
 ### Biomedical LLM Service (Port 8003)
-- **Technology**: FastAPI + OpenAI GPT-4o-mini
-- **Features**:
-  - Medical question answering with Dan's clinical prompt
-  - Patient context integration (FHIR data)
-  - Real-time chat responses
-  - Token-optimized context management
-  - Multimodal medical analysis
-  - Clinical knowledge base
+**Technology**: FastAPI + OpenAI GPT-4o-mini
 
-**Key Endpoints:**
+**Features**:
+- Medical question answering with clinical prompts
+- Patient context integration (FHIR data)
+- Real-time chat responses
+- Token-optimized context management
+
+**Key Endpoints**:
 - `POST /api/v0/chat` - Chat with biomedical LLM
 - `POST /api/v0/analyze` - Analyze patient case
 - `GET /health` - Service health check
 
-**Configuration:**
+**Configuration**:
 - Requires `OPENAI_API_KEY` environment variable
-- Uses GPT-4o-mini model for cost-effective, fast responses
-- Dan's specialized clinical prompt for accurate medical context
+- Uses GPT-4o-mini for cost-effective responses
+- Specialized clinical prompting for accuracy
 
-## 🛠️ Tech Stack
+## Technology Stack
 
 ### Frontend
-- **React 18** - Modern UI framework with hooks
-- **TypeScript** - Type-safe JavaScript for reliability
-- **Vite** - Lightning-fast build tool and dev server
-- **Axios** - HTTP client for API calls
-- **CSS Modules** - Component-scoped styling
-- **localStorage** - Client-side conversation persistence
+- React 18 - UI framework
+- TypeScript - Type-safe development
+- Vite - Fast build tool
+- Axios - HTTP client
+- CSS Modules - Component styling
+- localStorage - Client-side persistence
 
-### Backend Services
-- **FastAPI** - High-performance async web framework
-- **Python 3.9+** - Modern Python with type hints
-- **Poetry** - Dependency management and packaging
-- **Uvicorn** - ASGI server with auto-reload
-- **Pydantic** - Data validation and settings management
-- **httpx** - Async HTTP client for service communication
+### Backend
+- FastAPI - Async web framework
+- Python 3.9+ - Core language
+- Poetry - Dependency management
+- Uvicorn - ASGI server
+- Pydantic - Data validation
+- httpx - Async HTTP client
 
-### AI & Machine Learning
-- **OpenAI GPT-4o-mini** - Advanced language model
-- **MONAI** - Medical Open Network for AI
-- **PyTorch** - Deep learning framework
-- **Transformers** - HuggingFace model library
-- **NumPy/SciPy** - Scientific computing
+### AI & ML
+- OpenAI GPT-4o-mini - Language model
+- MONAI - Medical imaging AI
+- PyTorch - Deep learning framework
+- Transformers - Model library
+- NumPy/SciPy - Scientific computing
 
 ### Data & Integration
-- **Google Healthcare FHIR API** - Patient data standard
-- **DICOM** - Medical imaging standard
-- **REST APIs** - Service-to-service communication
-- **JSON** - Data interchange format
+- Google Healthcare FHIR API - Patient data
+- DICOM - Medical imaging standard
+- REST APIs - Service communication
+- JSON - Data interchange
 
-### Infrastructure & DevOps
-- **Docker** - Container platform
-- **Docker Compose** - Multi-container orchestration
-- **Nginx** - Frontend web server
-- **Make** - Build automation
-- **Git** - Version control
+### Infrastructure
+- Docker - Containerization
+- Docker Compose - Orchestration
+- Nginx - Web server
+- Make - Build automation
+- Git - Version control
 
-### Development Tools
-- **ESLint** - JavaScript linting
-- **Prettier** - Code formatting
-- **pytest** - Python testing
-- **Black** - Python code formatter
+## System Features
 
-## 📊 New Features Documentation
+### Conversation Memory
 
-### 🧠 Conversation Memory System
+The conversation system maintains context throughout patient sessions:
 
-The conversation memory system allows the AI to remember context across the entire patient session.
+**Architecture**:
+- In-memory session storage with UUID-based session IDs
+- 24-hour automatic session expiration
+- Maximum 2000 tokens per context window
+- Up to 50 messages per session
+- localStorage persistence on client side
 
-**Architecture:**
-- **Session Storage**: In-memory dictionary storing conversation history
-- **Session ID**: UUID generated per patient, stored in localStorage
-- **TTL**: 24-hour automatic session expiration
-- **Context Window**: Max 2000 tokens to optimize LLM performance
-- **Message Limit**: Up to 50 messages per session
+**Workflow**:
+1. Patient dashboard opens → Session ID generated or restored
+2. User asks question → Message stored before LLM call
+3. AI responds → Response stored in conversation history
+4. Page refresh → Session restored from localStorage
+5. Context maintained → AI remembers previous exchanges
 
-**How It Works:**
-1. User opens patient dashboard → Session ID generated or restored from localStorage
-2. User asks question → Message stored in ConversationManager before LLM call
-3. AI responds → Response stored in ConversationManager
-4. User refreshes page → Session ID retrieved from localStorage, history restored
-5. User continues conversation → AI has full context of previous messages
-
-**API Endpoints:**
+**API Endpoints**:
 ```bash
-# Get conversation history
-GET /api/v0/chat/history/{session_id}
-
-# Delete conversation (clear history)
-DELETE /api/v0/chat/history/{session_id}
-
-# Get conversation statistics
-GET /api/v0/chat/stats
+GET /api/v0/chat/history/{session_id}      # Retrieve history
+DELETE /api/v0/chat/history/{session_id}   # Clear conversation
+GET /api/v0/chat/stats                     # System statistics
 ```
 
-**Frontend Integration:**
-- `PatientDashboardPage.tsx` manages session lifecycle
+**Frontend Integration**:
+- Session management in `PatientDashboardPage.tsx`
 - localStorage key: `chat_session_${patientId}`
-- "Clear Conversation" button with confirmation dialog
+- Confirmation dialog for conversation clearing
 - Auto-restoration on component mount
 
-**Configuration:**
+**Configuration**:
 ```python
 # backend/engine/services/conversation_manager.py
 MAX_MESSAGES_PER_SESSION = 50
@@ -484,26 +415,20 @@ SESSION_TTL_HOURS = 24
 MAX_CONTEXT_TOKENS = 2000
 ```
 
-**Testing:**
-See [CONVERSATION_MEMORY_TEST_GUIDE.md](CONVERSATION_MEMORY_TEST_GUIDE.md) for comprehensive testing instructions.
+### Pagination System
 
-### ⚡ Pagination System
+High-performance pagination improves initial load time by 80%:
 
-Dramatically improves performance by loading patients in smaller batches.
-
-**Backend Implementation:**
+**Backend Implementation**:
 ```python
-# backend/engine/api/v0/endpoints/dashboard.py
 @router.get("/dashboard")
 async def get_patient_list_data(
-    page: int = 1,           # Current page number
-    page_size: int = 20      # Items per page (10/20/50/100)
+    page: int = 1,
+    page_size: int = 20
 ):
-    # Calculate indices
     start_idx = (page - 1) * page_size
     end_idx = min(start_idx + page_size, total)
-    
-    # Return paginated data
+
     return {
         "patients": patients[start_idx:end_idx],
         "total": total,
@@ -513,57 +438,35 @@ async def get_patient_list_data(
     }
 ```
 
-**Frontend Implementation:**
-```typescript
-// frontend/src/pages/PatientListPage/PatientListPage.tsx
-const [currentPage, setCurrentPage] = useState(1);
-const [pageSize, setPageSize] = useState(20);
-const [totalPatients, setTotalPatients] = useState(0);
-const [totalPages, setTotalPages] = useState(0);
+**Frontend Implementation**:
+- State management for current page and page size
+- Dynamic data loading on page change
+- UI controls: First/Previous/Next/Last navigation
+- Page size selector (10/20/50/100)
+- Smart page range display (5 pages at a time)
+- Loading state management
 
-// Load data when page changes
-useEffect(() => {
-  loadPatientListData();
-}, [currentPage, pageSize]);
-```
+**Performance**:
+- Before: 5-10 seconds for 100 patients
+- After: 1-2 seconds for 20 patients
+- Improvement: 80% faster initial load
 
-**UI Controls:**
-- First/Previous/Next/Last navigation buttons
-- Page number buttons (shows 5 at a time)
-- Page size selector (10, 20, 50, 100 per page)
-- "Showing X to Y of Z patients" info display
-- Disabled state during loading
-- Smart page range calculation
+## Monitoring & Health Checks
 
-**Performance Impact:**
-- **Before**: 5-10 seconds to load 100 patients
-- **After**: 1-2 seconds to load 20 patients
-- **Improvement**: 80% faster initial load time
-
-**Configuration:**
-```typescript
-// Default page sizes available
-const PAGE_SIZES = [10, 20, 50, 100];
-const DEFAULT_PAGE_SIZE = 20;
-```
-
-## 🔍 Monitoring & Health Checks
-
-All services include comprehensive health check endpoints:
+All services expose health check endpoints:
 
 ```bash
-# Check all services at once
+# Check all services
 make health
 
-# Or check individually:
-curl http://localhost:8000/health    # Engine (API Gateway)
-curl http://localhost:8001/health    # Patient Data Service
-curl http://localhost:8002/health    # Medical Imaging Service
-curl http://localhost:8003/health    # Biomedical LLM Service
-curl http://localhost:3000/          # Frontend (should return HTML)
+# Individual checks
+curl http://localhost:8000/health    # Engine
+curl http://localhost:8001/health    # Patient Data
+curl http://localhost:8002/health    # Medical Imaging
+curl http://localhost:8003/health    # Biomedical LLM
 ```
 
-**Health Check Response:**
+**Health Response**:
 ```json
 {
   "status": "healthy",
@@ -573,24 +476,16 @@ curl http://localhost:3000/          # Frontend (should return HTML)
 }
 ```
 
-**Service Logs:**
+**Service Logs**:
 ```bash
-# View all logs
-make logs
-
-# View specific service logs
-make logs-engine
-make logs-frontend
-make logs-patient-data
-make logs-llm
-
-# Follow logs in real-time
-docker-compose logs -f engine
+make logs                # All services
+make logs-engine         # Engine only
+make logs-frontend       # Frontend only
+docker-compose logs -f   # Real-time
 ```
 
-**Conversation Statistics:**
+**Conversation Statistics**:
 ```bash
-# Get system-wide conversation stats
 curl http://localhost:8000/api/v0/chat/stats
 
 # Response:
@@ -602,23 +497,13 @@ curl http://localhost:8000/api/v0/chat/stats
 }
 ```
 
-## 🔒 Security & Best Practices
+## Security & Best Practices
 
-### Environment Variables
-**Never commit sensitive data!** All services use environment files:
+### Environment Configuration
 
-```bash
-# These files are in .gitignore
-backend/engine/.env
-backend/patient_data/.env
-backend/medical_imaging/.env
-backend/biomedical_llm/.env
-frontend/.env
-```
+All sensitive data stored in environment files (gitignored):
 
-**Required Environment Variables:**
-
-**Backend Engine:**
+**Backend Engine** (`backend/engine/.env`):
 ```bash
 OPENAI_API_KEY=sk-your-openai-api-key
 PATIENT_DATA_SERVICE_URL=http://localhost:8001
@@ -628,14 +513,14 @@ DEBUG=true
 LOG_LEVEL=INFO
 ```
 
-**Patient Data Service:**
+**Patient Data Service** (`backend/patient_data/.env`):
 ```bash
 GOOGLE_CLOUD_PROJECT=your-project-id
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 SERVICE_PORT=8001
 ```
 
-**Biomedical LLM Service:**
+**Biomedical LLM Service** (`backend/biomedical_llm/.env`):
 ```bash
 OPENAI_API_KEY=sk-your-openai-api-key
 PATIENT_DATA_URL=http://localhost:8001
@@ -643,95 +528,87 @@ SERVICE_PORT=8003
 ```
 
 ### Container Security
-- ✅ Non-root users in all containers
-- ✅ Network isolation between services
-- ✅ Read-only file systems where possible
-- ✅ Minimal base images (Alpine Linux)
-- ✅ No hardcoded secrets
+- Non-root users in all containers
+- Network isolation between services
+- Read-only file systems where applicable
+- Minimal base images (Alpine Linux)
+- No hardcoded secrets
 
 ### API Security
-- ✅ CORS configuration for frontend
-- ✅ Request validation with Pydantic
-- ✅ Health check endpoints (no auth required)
-- ✅ Environment-based configuration
-- ⚠️ **Production TODO**: Add JWT authentication
+- CORS configuration for frontend
+- Pydantic request validation
+- Environment-based configuration
+- Health endpoints (no authentication required)
+- **Production TODO**: Implement JWT authentication
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Pre-Production Checklist
 
 - [ ] Set `ENVIRONMENT=production` in all `.env` files
 - [ ] Set `DEBUG=false` in all `.env` files
-- [ ] Generate strong secrets for production
-- [ ] Configure proper logging levels (`LOG_LEVEL=WARNING`)
+- [ ] Generate strong production secrets
+- [ ] Configure `LOG_LEVEL=WARNING`
 - [ ] Set up SSL/TLS certificates
 - [ ] Configure firewall rules
-- [ ] Set up monitoring and alerting
+- [ ] Implement monitoring and alerting
 - [ ] Configure backup strategy
-- [ ] Review CORS settings
+- [ ] Review and restrict CORS settings
 - [ ] Set up CI/CD pipeline
 
-### Docker Production Configuration
+### Docker Production
 
 ```bash
 # Build production images
 docker-compose -f docker-compose.yml build
 
-# Start with production settings
+# Start services
 docker-compose up -d
 
-# Scale services as needed
+# Scale services
 docker-compose up -d --scale engine=2 --scale llm=2
 ```
 
-### Environment Configuration
+### Production Environment
 
-**Production .env example:**
 ```bash
 # backend/engine/.env
 ENVIRONMENT=production
 DEBUG=false
 LOG_LEVEL=WARNING
-OPENAI_API_KEY=sk-prod-key-here
-SECRET_KEY=your-strong-secret-key
-JWT_SECRET=your-jwt-secret
+OPENAI_API_KEY=sk-prod-key
+SECRET_KEY=strong-secret-key
+JWT_SECRET=jwt-secret
 ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-### Scaling Strategies
+### Scaling
 
-**Horizontal Scaling:**
+**Horizontal Scaling**:
 ```bash
-# Scale specific services
 docker-compose up -d --scale engine=3
 docker-compose up -d --scale llm=2
 ```
 
-**Load Balancing:**
-- Use Nginx or Traefik for load balancing
-- Configure health checks for automatic failover
+**Load Balancing**:
+- Use Nginx or Traefik
+- Configure health checks for failover
 - Implement sticky sessions for conversation memory
 
-**Database Migration:**
-- Currently uses in-memory storage for conversations
-- **Production TODO**: Migrate to Redis or PostgreSQL for persistence
-- Implement session replication across instances
+**Database Migration**:
+- Current: In-memory conversation storage
+- **Production TODO**: Migrate to Redis or PostgreSQL
+- Implement session replication
 
-## 🧪 Testing
+## Testing
 
-### Manual Testing
+### Quick Validation
 
-**Test Pagination:**
 ```bash
-# Test different page sizes
-curl "http://localhost:8000/api/v0/dashboard?page=1&page_size=10"
-curl "http://localhost:8000/api/v0/dashboard?page=2&page_size=20"
-curl "http://localhost:8000/api/v0/dashboard?page=1&page_size=50"
-```
+# Test pagination
+curl "http://localhost:8000/api/v0/dashboard?page=1&page_size=20"
 
-**Test Conversation Memory:**
-```bash
-# 1. Start a conversation (get session_id from response)
+# Test conversation memory
 curl -X POST http://localhost:8000/api/v0/chat \
   -H "Content-Type: application/json" \
   -d '{
@@ -740,144 +617,190 @@ curl -X POST http://localhost:8000/api/v0/chat \
     "session_id": "test-session-uuid"
   }'
 
-# 2. Get conversation history
+# Retrieve conversation
 curl http://localhost:8000/api/v0/chat/history/test-session-uuid
 
-# 3. Send follow-up (AI should remember context)
-curl -X POST http://localhost:8000/api/v0/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Has it changed recently?",
-    "patient_id": "123",
-    "session_id": "test-session-uuid"
-  }'
-
-# 4. Clear conversation
+# Clear conversation
 curl -X DELETE http://localhost:8000/api/v0/chat/history/test-session-uuid
 ```
 
 ### Frontend Testing
 
-**Browser Console Tests:**
+**Browser Console**:
 ```javascript
 // Check session persistence
 localStorage.getItem('chat_session_123')
-
-// Verify API calls
-// Open DevTools > Network tab
-// Filter by "dashboard" or "chat"
-// Check request/response payloads
 ```
 
-**UI Testing Checklist:**
-- [ ] Patient list loads quickly (1-2 seconds)
-- [ ] Pagination controls visible when > 20 patients
-- [ ] Page navigation buttons work correctly
-- [ ] Page size selector changes results
-- [ ] "Showing X to Y of Z" displays correctly
-- [ ] Search functionality works
-- [ ] Click patient opens dashboard
+**UI Checklist**:
+- [ ] Patient list loads within 2 seconds
+- [ ] Pagination controls display correctly
+- [ ] Page navigation functions properly
+- [ ] Page size selector works
+- [ ] Search operates correctly
+- [ ] Patient dashboard opens successfully
 - [ ] Chat interface loads
-- [ ] AI responds to questions
-- [ ] Refresh page preserves conversation
-- [ ] Follow-up questions show context understanding
-- [ ] Clear conversation button works
-- [ ] Confirmation dialog appears before clearing
+- [ ] AI responds to queries
+- [ ] Page refresh maintains conversation
+- [ ] Follow-up questions show context retention
+- [ ] Clear conversation works with confirmation
 
 ### Automated Testing
 
-**Backend Tests:**
 ```bash
+# Backend tests
 cd backend/engine
 poetry run pytest
 
 cd backend/patient_data
 poetry run pytest
-```
 
-**Frontend Tests:**
-```bash
+# Frontend tests
 cd frontend
 npm run test
 ```
 
-## 🐛 Troubleshooting
+### E2E Testing Framework
 
-### Common Issues
+MendAI includes a comprehensive end-to-end testing framework using Playwright.
 
-**1. Services won't start**
+**Test Coverage**:
+- 19 comprehensive tests across 2 test suites
+- 100% pass rate
+- Full system validation (all 5 services)
+- API integration tests (Slice & Batch Analysis)
+- Performance benchmarking
+- AI model validation
+
+**Quick Start**:
 ```bash
-# Check if ports are already in use
+cd frontend
+
+# Validate medical imaging test data
+npm run validate-images
+
+# Run all E2E tests
+npm run test:e2e
+
+# Run specific test suite
+npm run test:e2e -- basic-flow.spec.ts          # 9 tests, ~45s
+npm run test:e2e -- complete-success.spec.ts    # 10 tests, ~1m
+
+# Interactive mode
+npm run test:e2e:ui
+
+# View test report
+npm run test:e2e:report
+```
+
+**Test Suites**:
+1. **Basic Flow Tests** (`basic-flow.spec.ts`)
+   - Service health checks (all 5 services)
+   - API endpoint validation
+   - Service integration tests
+   - Duration: ~45 seconds
+
+2. **Complete Success Suite** (`complete-success.spec.ts`)
+   - Full system validation
+   - Medical imaging data validation
+   - Slice and batch analysis APIs
+   - AI model validation
+   - Performance metrics
+   - Duration: ~1 minute
+
+**Performance Results**:
+- Slice Analysis: 3.5s (target: <10s)
+- Batch Analysis: 35s (target: <60s)
+- Health Checks: <1s (target: <2s)
+- Frontend Load: 1.5s (target: <5s)
+
+**Documentation**:
+- [Testing Quick Start](TESTING_QUICKSTART.md) - 5-minute guide
+- [Testing Certification](TESTING_CERTIFICATION.md) - Full certification report
+- [E2E Testing Guide](E2E_TESTING_GUIDE.md) - Complete testing guide
+- [Test Results Summary](TEST_RESULTS_SUMMARY.md) - Detailed results
+
+**Prerequisites**:
+```bash
+# Install Playwright browsers (first time only)
+npx playwright install chromium
+```
+
+**Test Data Setup**:
+Place your NIfTI medical imaging test files in:
+```
+frontend/tests/e2e/fixtures/medical-data/
+├── case-001/  # Your .nii files here
+└── case-002/  # Your .nii files here
+```
+
+**Verify Backend Services**:
+```bash
+# Windows
+scripts\verify-backend.bat
+
+# Linux/Mac
+scripts/verify-backend.sh
+```
+
+## Troubleshooting
+
+### Port Conflicts
+
+```bash
+# Check port usage
 lsof -i :3000  # Frontend
 lsof -i :8000  # Engine
 lsof -i :8001  # Patient Data
 lsof -i :8003  # Biomedical LLM
 
-# Kill processes if needed
+# Terminate process
 kill -9 <PID>
-
-# Or use different ports in docker-compose.yml
 ```
 
-**2. Docker build fails**
+### Docker Build Issues
+
 ```bash
-# Clean Docker cache and rebuild
+# Clean cache and rebuild
 docker system prune -a
 make clean
 make build
 ```
 
-**3. Frontend can't connect to backend**
-```bash
-# Check CORS settings in backend
-# Verify API_BASE_URL in frontend/.env
-# Check Docker network: docker network inspect mendai_default
-```
+### Frontend Connection Issues
 
-**4. OpenAI API errors**
+- Verify CORS settings in backend
+- Check `API_BASE_URL` in frontend/.env
+- Inspect Docker network: `docker network inspect mendai_default`
+
+### OpenAI API Errors
+
 ```bash
-# Verify API key is set
+# Verify API key
 echo $OPENAI_API_KEY
 
-# Check backend logs
+# Check logs
 make logs-engine
 
-# Common errors:
-# - "Invalid API key" → Check .env file
-# - "Rate limit exceeded" → Reduce request frequency
-# - "Model not found" → Verify model name (gpt-4o-mini)
+# Common issues:
+# - Invalid API key → Check .env file
+# - Rate limit → Reduce request frequency
+# - Model not found → Verify model name (gpt-4o-mini)
 ```
 
-**5. Conversation not persisting**
+### Conversation Persistence Issues
+
+- Check localStorage in browser DevTools (Application > Local Storage)
+- Verify backend session: `curl http://localhost:8000/api/v0/chat/stats`
+- Clear browser cache and retry
+
+### Performance Issues
+
 ```bash
-# Check localStorage in browser
-# DevTools > Application > Local Storage
-# Look for keys like: chat_session_${patientId}
-
-# Check session exists in backend
-curl http://localhost:8000/api/v0/chat/stats
-
-# Clear browser cache and test again
-```
-
-**6. Pagination not working**
-```bash
-# Verify backend returns pagination metadata
-curl "http://localhost:8000/api/v0/dashboard?page=1&page_size=20" | jq
-
-# Expected response should include:
-# - total
-# - page
-# - page_size
-# - total_pages
-```
-
-**7. Performance issues**
-```bash
-# Check Docker resource limits
+# Monitor Docker resources
 docker stats
 
-# Increase Docker memory/CPU in Docker Desktop settings
+# Increase resources in Docker Desktop
 # Recommended: 4GB RAM, 2 CPUs minimum
 
 # Check logs for errors
@@ -886,29 +809,25 @@ make logs
 
 ### Debug Mode
 
-**Enable verbose logging:**
+**Enable verbose logging**:
 ```bash
 # Edit backend/engine/.env
 DEBUG=true
 LOG_LEVEL=DEBUG
 
-# Restart services
+# Restart and view logs
 make restart
-
-# View detailed logs
 make logs-engine
 ```
 
-**Frontend debug:**
+**Frontend debug**:
 ```javascript
-// Add to browser console
+// Browser console
 localStorage.setItem('debug', '*')
-// Reload page to see debug logs
+// Reload page
 ```
 
-## 🤝 Contributing
-
-We welcome contributions! Here's how to get started:
+## Contributing
 
 ### Development Workflow
 
@@ -921,134 +840,131 @@ git remote add upstream https://github.com/ricktruong/MendAI.git
 
 2. **Create Feature Branch**
 ```bash
-git checkout -b feature/your-amazing-feature
+git checkout -b feature/your-feature-name
 ```
 
-3. **Make Changes**
+3. **Develop**
 - Follow existing code style
 - Add tests for new features
 - Update documentation
-- Test thoroughly (frontend + backend)
+- Test thoroughly
 
-4. **Commit Changes**
+4. **Commit and Push**
 ```bash
 git add .
-git commit -m "Add amazing feature: brief description"
+git commit -m "Add feature: description"
+git push origin feature/your-feature-name
 ```
 
-5. **Push and Create PR**
-```bash
-git push origin feature/your-amazing-feature
-# Open Pull Request on GitHub
-```
+5. **Create Pull Request**
+Open PR on GitHub with detailed description
 
-### Code Style Guidelines
+### Code Style
 
-**Python (Backend):**
+**Python (Backend)**:
 - Use Black for formatting: `black .`
 - Follow PEP 8 conventions
-- Add type hints to functions
-- Write docstrings for classes/functions
-- Use async/await for I/O operations
+- Add type hints
+- Write docstrings
+- Use async/await for I/O
 
-**TypeScript (Frontend):**
+**TypeScript (Frontend)**:
 - Use ESLint and Prettier
 - Follow functional component patterns
 - Use TypeScript types (avoid `any`)
-- Add JSDoc comments for complex functions
+- Add JSDoc for complex functions
 
 ### Testing Requirements
 
-- Add unit tests for new backend endpoints
+- Add unit tests for backend endpoints
 - Test frontend components
 - Verify Docker builds
-- Check all health endpoints
-- Test pagination with edge cases
-- Test conversation memory persistence
+- Check health endpoints
+- Test edge cases
 
-## 📚 Additional Documentation
+## Documentation
 
 ### Feature Documentation
-- [Conversation Memory Feature](CONVERSATION_MEMORY_FEATURE.md) - Architecture and API reference
-- [Conversation Memory Testing](CONVERSATION_MEMORY_TEST_GUIDE.md) - Step-by-step testing guide
+- [Conversation Memory Feature](CONVERSATION_MEMORY_FEATURE.md) - Architecture and API
+- [Conversation Memory Testing](CONVERSATION_MEMORY_TEST_GUIDE.md) - Testing guide
 
 ### Service Documentation
-- [Frontend README](frontend/README.md) - Frontend development guide
-- [Engine Service](backend/engine/README.md) - Main API gateway documentation
-- [Patient Data Service](backend/patient_data/README.md) - FHIR integration guide
-- [Biomedical LLM Service](backend/biomedical_llm/README.md) - LLM service documentation
+- [Frontend README](frontend/README.md) - Frontend development
+- [Engine Service](backend/engine/README.md) - API gateway
+- [Patient Data Service](backend/patient_data/README.md) - FHIR integration
+- [Biomedical LLM Service](backend/biomedical_llm/README.md) - LLM service
 
 ### Quick Reference
-- **Make Commands**: Run `make help` to see all available commands
-- **API Documentation**: Visit `http://localhost:8000/docs` when services are running
-- **Docker Logs**: Use `make logs` or `docker-compose logs -f [service-name]`
+- **Make Commands**: `make help`
+- **API Documentation**: http://localhost:8000/docs (when running)
+- **Docker Logs**: `make logs` or `docker-compose logs -f [service]`
 
-## 🎓 Learning Resources
+## Resources
 
-### For Healthcare Professionals
-- **FHIR Standard**: https://www.hl7.org/fhir/
-- **DICOM Format**: https://www.dicomstandard.org/
-- **Medical AI**: https://monai.io/
+### Healthcare Standards
+- FHIR Standard: https://www.hl7.org/fhir/
+- DICOM Format: https://www.dicomstandard.org/
+- Medical AI: https://monai.io/
 
-### For Developers
-- **FastAPI**: https://fastapi.tiangolo.com/
-- **React**: https://react.dev/
-- **Docker**: https://docs.docker.com/
-- **OpenAI API**: https://platform.openai.com/docs/
+### Development
+- FastAPI: https://fastapi.tiangolo.com/
+- React: https://react.dev/
+- Docker: https://docs.docker.com/
+- OpenAI API: https://platform.openai.com/docs/
 
-## 📊 Project Status
+## Project Status
 
-### Completed Features ✅
-- ✅ Patient data management with FHIR integration
-- ✅ Medical imaging analysis with DICOM support
-- ✅ AI-powered chat with GPT-4o-mini
-- ✅ Conversation memory system (24hr TTL, session-based)
-- ✅ High-performance pagination (80% faster load times)
-- ✅ Real-time chat interface
-- ✅ Age calculation fix for FHIR dates
-- ✅ Docker containerization
-- ✅ Auto-reload in development
-- ✅ Comprehensive documentation
+### Completed
+- Patient data management with FHIR integration
+- Medical imaging analysis with NIfTI support
+- AI-powered chat with GPT-4o-mini
+- Conversation memory system (24hr TTL, session-based)
+- High-performance pagination (80% faster)
+- Real-time chat interface
+- FHIR date handling fixes
+- Docker containerization
+- Auto-reload in development
+- Comprehensive documentation
 
-### In Progress 🚧
-- 🚧 Persistent conversation storage (Redis/PostgreSQL)
-- 🚧 User authentication and authorization
-- 🚧 Advanced medical image analysis
-- 🚧 Multi-model LLM support
-- 🚧 Export/import patient data
+### In Progress
+- Persistent conversation storage (Redis/PostgreSQL)
+- User authentication and authorization
+- Advanced medical image analysis
+- Multi-model LLM support
+- Patient data export/import
 
-### Planned Features 📋
-- 📋 Role-based access control (RBAC)
-- 📋 Audit logging for compliance
-- 📋 Real-time notifications
-- 📋 Mobile application
-- 📋 Advanced analytics dashboard
-- 📋 Integration with more EHR systems
-- 📋 Multi-language support
+### Planned
+- Role-based access control (RBAC)
+- Audit logging for compliance
+- Real-time notifications
+- Mobile application
+- Advanced analytics dashboard
+- Additional EHR system integrations
+- Multi-language support
 
-## 📄 License
+## License
 
 This project is for educational and research purposes.
 
-**Important Notes:**
-- Medical AI models are for research only
+**Important Notes**:
+- Medical AI models are research-grade only
 - Not FDA approved for clinical use
 - Requires proper credentials for production FHIR access
 - OpenAI API usage subject to OpenAI terms of service
 
-## 🆘 Support & Contact
+## Support
 
 ### Getting Help
 
-1. **Check Documentation**: Start with this README and feature-specific docs
-2. **Review Issues**: Check [GitHub Issues](https://github.com/ricktruong/MendAI/issues) for similar problems
-3. **Service Logs**: Use `make logs` to check for errors
-4. **Health Checks**: Run `make health` to verify all services
-5. **Community**: Open a new issue with detailed information
+1. Check this README and feature-specific documentation
+2. Review [GitHub Issues](https://github.com/ricktruong/MendAI/issues)
+3. Check service logs: `make logs`
+4. Verify service health: `make health`
+5. Open new issue with detailed information
 
 ### Reporting Issues
 
-When reporting bugs, please include:
+Include:
 - Operating system and version
 - Docker version (`docker --version`)
 - Steps to reproduce
@@ -1057,29 +973,27 @@ When reporting bugs, please include:
 
 ### Feature Requests
 
-We welcome feature suggestions! Please:
 - Check existing issues first
 - Describe the use case
 - Explain expected behavior
 - Consider implementation complexity
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-- **MONAI Framework** - Medical imaging AI
-- **OpenAI** - GPT-4o-mini language model
-- **FastAPI Team** - High-performance web framework
-- **React Team** - Frontend framework
-- **Google Healthcare** - FHIR API integration
-- **Healthcare Community** - Domain expertise and feedback
+- MONAI Framework - Medical imaging AI
+- OpenAI - GPT-4o-mini language model
+- FastAPI Team - Web framework
+- React Team - Frontend framework
+- Google Healthcare - FHIR API integration
+- Healthcare Community - Domain expertise
 
-## 📞 Contact
+## Contact
 
-- **Project Repository**: https://github.com/ricktruong/MendAI
-- **Issues**: https://github.com/ricktruong/MendAI/issues
-- **Email**: [Contact project maintainers]
+- Repository: https://github.com/ricktruong/MendAI
+- Issues: https://github.com/ricktruong/MendAI/issues
 
 ---
 
-**Built with ❤️ for better healthcare outcomes**
+**Built with care for better healthcare outcomes**
 
-*Last Updated: November 16, 2025*
+*Last Updated: November 27, 2025*

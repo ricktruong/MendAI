@@ -19,5 +19,5 @@ REQUIRES WORKSTATION W/ GPU SUPPORT
 ## Features
 - Medical image segmentation
 - Disease detection and classification
-- DICOM file processing
+- NIfTI file processing (.nii, .nii.gz)
 - MONAI model integration 

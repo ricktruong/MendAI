@@ -204,6 +204,8 @@ dmypy.json
 *.csv
 *.tsv
 *.json
+!frontend/tests/e2e/config/test-env.json
+!frontend/tests/e2e/fixtures/medical-data/metadata-template.json
 *.xml
 # *.yaml
 # *.yml
@@ -211,6 +213,20 @@ data/
 datasets/
 samples/
 test_data/
+
+# E2E Test Results (do not commit)
+frontend/tests/test-results/
+frontend/tests/e2e/fixtures/medical-data/*.json
+!frontend/tests/e2e/fixtures/medical-data/metadata-template.json
+frontend/playwright-report/
+frontend/test-results/
+frontend/tests/CTImageTest/
+playwright/.cache/
+
+# Test screenshots and artifacts
+**/screenshots/
+**/failures/
+**/reports/
 
 # Database files
 *.db

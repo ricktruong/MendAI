@@ -1,0 +1,40 @@
+{
+  "backend": {
+    "base_url": "http://localhost:8000",
+    "patient_data_service": "http://localhost:8001",
+    "imaging_service": "http://localhost:8002",
+    "llm_service": "http://localhost:8003",
+    "timeout_ms": 300000
+  },
+  "ai_analysis": {
+    "slice_timeout_ms": 60000,
+    "batch_timeout_ms": 600000,
+    "max_retries": 3,
+    "retry_delay_ms": 5000,
+    "poll_interval_ms": 2000
+  },
+  "test_data": {
+    "medical_image_dir": "./tests/e2e/fixtures/medical-data",
+    "metadata_file": "./tests/e2e/fixtures/medical-data/metadata.json"
+  },
+  "screenshots": {
+    "enabled": true,
+    "directory": "./tests/test-results/screenshots",
+    "on_failure": true,
+    "full_page": true
+  },
+  "test_patients": {
+    "patient_001": "E2E-TEST-001",
+    "patient_002": "E2E-TEST-002"
+  },
+  "performance": {
+    "upload_timeout_ms": 120000,
+    "navigation_timeout_ms": 30000,
+    "api_timeout_ms": 60000
+  },
+  "logging": {
+    "level": "info",
+    "save_to_file": true,
+    "directory": "./tests/test-results/logs"
+  }
+}

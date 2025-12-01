@@ -1,0 +1,34 @@
+{
+  "generated_at": null,
+  "version": "1.0",
+  "cases": [
+    {
+      "case_id": "001",
+      "directory": "case-001",
+      "file_count": 0,
+      "files": [],
+      "metadata": {
+        "patient_id": null,
+        "modality": null,
+        "body_part": null,
+        "slice_thickness": null,
+        "study_date": null,
+        "study_description": null
+      }
+    },
+    {
+      "case_id": "002",
+      "directory": "case-002",
+      "file_count": 0,
+      "files": [],
+      "metadata": {
+        "patient_id": null,
+        "modality": null,
+        "body_part": null,
+        "slice_thickness": null,
+        "study_date": null,
+        "study_description": null
+      }
+    }
+  ]
+}
