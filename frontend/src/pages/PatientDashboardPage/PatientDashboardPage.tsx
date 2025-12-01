@@ -1444,7 +1444,7 @@ const PatientDashboardPage: React.FC = () => {
 
             <div className="ct-viewer-container">
               <PanelGroup direction="horizontal">
-                <Panel defaultSize={65} minSize={40}>
+                <Panel defaultSize={75} minSize={40}>
                   <div className="ct-viewer">
                 {loadingImages ? (
                   <div className="loading-spinner">
@@ -1596,7 +1596,7 @@ const PatientDashboardPage: React.FC = () => {
 
                 <PanelResizeHandle className="resize-handle" />
 
-                <Panel defaultSize={35} minSize={25} maxSize={50}>
+                <Panel defaultSize={25} minSize={25} maxSize={50}>
                   <div className="ct-sidebar">
               {/* Slice Analysis Section */}
               <div className="ct-info-card">
