@@ -9,6 +9,7 @@ import os
 from dotenv import load_dotenv
 
 from .routes.chat import router as chat_router
+from .routes.evaluation import router as evaluation_router
 from .config import get_settings
 from common.core.logger import configure_logging
 
@@ -42,6 +43,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(chat_router, tags=["chat"])
+app.include_router(evaluation_router, tags=["evaluation"])
 
 
 @app.get("/")
