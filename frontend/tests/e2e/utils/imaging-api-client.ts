@@ -5,7 +5,7 @@
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import * as fs from 'fs';
-import * as FormData from 'form-data';
+import FormData from 'form-data';
 
 // Type definitions
 export interface UploadResponse {
