@@ -62,9 +62,9 @@ echo ""
 # Test 4: Consistency evaluation with different wording (same question)
 echo "4. Testing consistency with different wording (same question)..."
 echo "Questions:"
-echo "  - How old is this patient?"
-echo "  - What is this patient's age?"
-echo "  - What is their current age?"
+echo "  - Is the patient taking medications?"
+echo "  - List the medications they currently have"
+echo "  - What medications was the patient prescribed?"
 echo ""
 
 # Evaluate each variation
@@ -72,51 +72,51 @@ curl -s -X POST ${BASE_URL}/evaluate/query \
   -H "Content-Type: application/json" \
   -d "{
     \"patient_id\": \"${PATIENT_ID}\",
-    \"question\": \"How old is this patient?\",
+    \"question\": \"Is the patient taking medications?\",
     \"query_type\": \"consistency_wording_test\"
-  }" | python3 -m json.tool > /tmp/age_q1.json
+  }" | python3 -m json.tool > /tmp/med_q1.json
 
 curl -s -X POST ${BASE_URL}/evaluate/query \
   -H "Content-Type: application/json" \
   -d "{
     \"patient_id\": \"${PATIENT_ID}\",
-    \"question\": \"What is this patient's age?\",
+    \"question\": \"List the medications they currently have\",
     \"query_type\": \"consistency_wording_test\"
-  }" | python3 -m json.tool > /tmp/age_q2.json
+  }" | python3 -m json.tool > /tmp/med_q2.json
 
 curl -s -X POST ${BASE_URL}/evaluate/query \
   -H "Content-Type: application/json" \
   -d "{
     \"patient_id\": \"${PATIENT_ID}\",
-    \"question\": \"What is their current age?\",
+    \"question\": \"What medications was the patient prescribed?\",
     \"query_type\": \"consistency_wording_test\"
-  }" | python3 -m json.tool > /tmp/age_q3.json
+  }" | python3 -m json.tool > /tmp/med_q3.json
 
 # Display results
-echo "Response 1 (How old is this patient?):"
-cat /tmp/age_q1.json | jq -r '.response_text' | head -3
+echo "Response 1 (Is the patient taking medications?):"
+cat /tmp/med_q1.json | jq -r '.response_text' | head -3
 echo "..."
 echo ""
 
-echo "Response 2 (What is this patient's age?):"
-cat /tmp/age_q2.json | jq -r '.response_text' | head -3
+echo "Response 2 (List the medications they currently have):"
+cat /tmp/med_q2.json | jq -r '.response_text' | head -3
 echo "..."
 echo ""
 
-echo "Response 3 (What is their current age?):"
-cat /tmp/age_q3.json | jq -r '.response_text' | head -3
+echo "Response 3 (What medications was the patient prescribed?):"
+cat /tmp/med_q3.json | jq -r '.response_text' | head -3
 echo "..."
 echo ""
 
 # Calculate response length variance
-LEN1=$(cat /tmp/age_q1.json | jq -r '.response_length_chars')
-LEN2=$(cat /tmp/age_q2.json | jq -r '.response_length_chars')
-LEN3=$(cat /tmp/age_q3.json | jq -r '.response_length_chars')
+LEN1=$(cat /tmp/med_q1.json | jq -r '.response_length_chars')
+LEN2=$(cat /tmp/med_q2.json | jq -r '.response_length_chars')
+LEN3=$(cat /tmp/med_q3.json | jq -r '.response_length_chars')
 
 echo "Response lengths: $LEN1, $LEN2, $LEN3 chars"
 
 # Cleanup temp files
-rm /tmp/age_q*.json
+rm /tmp/med_q*.json
 
 echo ""
 echo "---"
@@ -157,15 +157,15 @@ cat > "${EXPERIMENT_DIR}/metadata.json" << EOF
 }
 EOF
 
-echo "✓ Results saved to: ${RESULTS_FILE}"
-echo "✓ Summary saved to: ${SUMMARY_FILE}"
-echo "✓ Metadata saved to: ${EXPERIMENT_DIR}/metadata.json"
+echo "Results saved to: ${RESULTS_FILE}"
+echo "Summary saved to: ${SUMMARY_FILE}"
+echo "Metadata saved to: ${EXPERIMENT_DIR}/metadata.json"
 
 # Also save as latest (for quick access)
 cp "${RESULTS_FILE}" "evaluation_results.json"
 cp "${SUMMARY_FILE}" "evaluation_summary.json"
-echo "✓ Latest results also saved to: evaluation_results.json"
-echo "✓ Latest summary also saved to: evaluation_summary.json"
+echo "Latest results also saved to: evaluation_results.json"
+echo "Latest summary also saved to: evaluation_summary.json"
 
 echo ""
 echo "========================================="

@@ -77,12 +77,6 @@ class MetricsCollector:
         # Fetch patient context
         patient_data = await self.patient_client.get_patient_data(patient_id)
         
-        # Format context (simplified - actual context would include patient data)
-        context_parts = []
-        if patient_data:
-            context_parts.append(f"Patient ID: {patient_id}")
-            # Add more patient context as needed
-        
         # Create user message
         user_message = ChatMessage(
             role="user",
@@ -92,16 +86,19 @@ class MetricsCollector:
         # Build request
         messages = [user_message.dict()]
         
-        # Estimate input tokens
+        # Estimate input tokens (including patient context if available)
         full_prompt = question
-        if context_parts:
-            full_prompt += "\n".join(context_parts)
+        if patient_data:
+            # Rough estimation of patient context size
+            import json
+            full_prompt += json.dumps(patient_data)
         estimated_input_tokens = self.estimate_tokens(full_prompt)
         
         # Measure response time
         start_time = time.time()
         response = self.openai_service.chat_completion(
             messages=messages,
+            patient_context=patient_data,  # Pass patient context, not just ID
             patient_id=patient_id
         )
         response_time = time.time() - start_time
