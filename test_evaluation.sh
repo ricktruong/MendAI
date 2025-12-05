@@ -6,9 +6,15 @@
 PATIENT_ID="a40640b3-b1a1-51ba-bf33-10eb05b37177"
 BASE_URL="http://localhost:8003"
 
+# Create experiment folder with timestamp
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+EXPERIMENT_DIR="evaluation_experiments/experiment_${TIMESTAMP}"
+mkdir -p "${EXPERIMENT_DIR}"
+
 echo "========================================="
 echo "MendAI Evaluation Module Test Script"
 echo "========================================="
+echo "Experiment folder: ${EXPERIMENT_DIR}"
 echo ""
 
 # Test 1: Simple query evaluation
@@ -39,8 +45,8 @@ echo ""
 echo "---"
 echo ""
 
-# Test 3: Consistency evaluation (3 runs)
-echo "3. Testing consistency across 3 identical queries..."
+# Test 3: Consistency evaluation (same question, exact wording)
+echo "3. Testing consistency with identical wording (3 runs)..."
 curl -s -X POST ${BASE_URL}/evaluate/consistency \
   -H "Content-Type: application/json" \
   -d "{
@@ -53,19 +59,116 @@ echo ""
 echo "---"
 echo ""
 
-# Test 4: Get summary statistics
-echo "4. Getting summary statistics from all evaluations..."
+# Test 4: Consistency evaluation with different wording (same question)
+echo "4. Testing consistency with different wording (same question)..."
+echo "Questions:"
+echo "  - How old is this patient?"
+echo "  - What is this patient's age?"
+echo "  - What is their current age?"
+echo ""
+
+# Evaluate each variation
+curl -s -X POST ${BASE_URL}/evaluate/query \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"patient_id\": \"${PATIENT_ID}\",
+    \"question\": \"How old is this patient?\",
+    \"query_type\": \"consistency_wording_test\"
+  }" | python3 -m json.tool > /tmp/age_q1.json
+
+curl -s -X POST ${BASE_URL}/evaluate/query \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"patient_id\": \"${PATIENT_ID}\",
+    \"question\": \"What is this patient's age?\",
+    \"query_type\": \"consistency_wording_test\"
+  }" | python3 -m json.tool > /tmp/age_q2.json
+
+curl -s -X POST ${BASE_URL}/evaluate/query \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"patient_id\": \"${PATIENT_ID}\",
+    \"question\": \"What is their current age?\",
+    \"query_type\": \"consistency_wording_test\"
+  }" | python3 -m json.tool > /tmp/age_q3.json
+
+# Display results
+echo "Response 1 (How old is this patient?):"
+cat /tmp/age_q1.json | jq -r '.response_text' | head -3
+echo "..."
+echo ""
+
+echo "Response 2 (What is this patient's age?):"
+cat /tmp/age_q2.json | jq -r '.response_text' | head -3
+echo "..."
+echo ""
+
+echo "Response 3 (What is their current age?):"
+cat /tmp/age_q3.json | jq -r '.response_text' | head -3
+echo "..."
+echo ""
+
+# Calculate response length variance
+LEN1=$(cat /tmp/age_q1.json | jq -r '.response_length_chars')
+LEN2=$(cat /tmp/age_q2.json | jq -r '.response_length_chars')
+LEN3=$(cat /tmp/age_q3.json | jq -r '.response_length_chars')
+
+echo "Response lengths: $LEN1, $LEN2, $LEN3 chars"
+
+# Cleanup temp files
+rm /tmp/age_q*.json
+
+echo ""
+echo "---"
+echo ""
+
+# Test 5: Get summary statistics
+echo "5. Getting summary statistics from all evaluations..."
 curl -s ${BASE_URL}/evaluate/summary | python3 -m json.tool
 
 echo ""
 echo "---"
 echo ""
 
-# Test 5: Export all results
-echo "5. Exporting all evaluation results..."
+# Test 6: Export all results
+echo "6. Exporting all evaluation results..."
 curl -s ${BASE_URL}/evaluate/export | python3 -m json.tool | head -30
+
+echo ""
+echo "---"
+echo ""
+
+# Save results to files
+echo "7. Saving results to experiment folder..."
+RESULTS_FILE="${EXPERIMENT_DIR}/results.json"
+SUMMARY_FILE="${EXPERIMENT_DIR}/summary.json"
+
+curl -s ${BASE_URL}/evaluate/export | python3 -m json.tool > "${RESULTS_FILE}"
+curl -s ${BASE_URL}/evaluate/summary | python3 -m json.tool > "${SUMMARY_FILE}"
+
+# Save experiment metadata
+cat > "${EXPERIMENT_DIR}/metadata.json" << EOF
+{
+  "timestamp": "${TIMESTAMP}",
+  "experiment_date": "$(date)",
+  "patient_id": "${PATIENT_ID}",
+  "base_url": "${BASE_URL}",
+  "test_types": ["simple", "medium", "consistency_identical", "consistency_wording"]
+}
+EOF
+
+echo "✓ Results saved to: ${RESULTS_FILE}"
+echo "✓ Summary saved to: ${SUMMARY_FILE}"
+echo "✓ Metadata saved to: ${EXPERIMENT_DIR}/metadata.json"
+
+# Also save as latest (for quick access)
+cp "${RESULTS_FILE}" "evaluation_results.json"
+cp "${SUMMARY_FILE}" "evaluation_summary.json"
+echo "✓ Latest results also saved to: evaluation_results.json"
+echo "✓ Latest summary also saved to: evaluation_summary.json"
 
 echo ""
 echo "========================================="
 echo "Evaluation tests complete!"
+echo "Experiment saved in: ${EXPERIMENT_DIR}"
 echo "========================================="
