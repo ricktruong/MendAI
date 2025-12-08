@@ -926,12 +926,6 @@ Open PR on GitHub with detailed description
 - Auto-reload in development
 - Comprehensive documentation
 
-### In Progress
-- Persistent conversation storage (Redis/PostgreSQL)
-- User authentication and authorization
-- Advanced medical image analysis
-- Multi-model LLM support
-- Patient data export/import
 
 ### Planned
 - Role-based access control (RBAC)
@@ -980,7 +974,7 @@ Include:
 
 ## Acknowledgments
 
-- MONAI Framework - Medical imaging AI
+- MONAI Framework - [Medical Imaging AI](https://huggingface.co/datasets/ibrahimhamamci/CT-RATE)
 - OpenAI - GPT-4o-mini language model
 - FastAPI Team - Web framework
 - React Team - Frontend framework
