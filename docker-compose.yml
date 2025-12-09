@@ -44,6 +44,10 @@ services:
       # Mount Google Cloud credentials file for local development
       - ./backend/patient_data/mendai-470816-d39912146cc6.json:/app/credentials.json:ro
     environment:
+      - GOOGLE_CLOUD_PROJECT=mendai-470816
+      - GCP_LOCATION=us-west2
+      - GCP_DATASET_ID=mimic_fhir
+      - GCP_FHIR_STORE_ID=mimic-fhir
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
     command: uvicorn patient_data.main:app --host 0.0.0.0 --port 8001
     restart: always

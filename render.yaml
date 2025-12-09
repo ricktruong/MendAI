@@ -43,9 +43,14 @@ services:
         value: production
       - key: GOOGLE_CLOUD_PROJECT
         value: mendai-470816  # Your Google Cloud project ID
+      - key: GCP_LOCATION
+        value: us-west2  # Google Cloud region where FHIR store is located
+      - key: GCP_DATASET_ID
+        value: mimic_fhir  # FHIR dataset ID
+      - key: GCP_FHIR_STORE_ID
+        value: mimic-fhir  # FHIR store ID
       - key: GOOGLE_APPLICATION_CREDENTIALS
         sync: false  # Set path or use service account JSON as env var
-      # If using service account JSON as environment variable:
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
         sync: false  # Paste entire JSON content here
 
