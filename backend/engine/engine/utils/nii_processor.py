@@ -56,6 +56,45 @@ class NiiProcessor:
         with open(file_path, 'wb') as f:
             f.write(file_content)
         return str(file_path)
+    
+    async def save_uploaded_file_streaming(self, file_stream, filename: str, max_size_mb: int = 500) -> str:
+        """
+        Save uploaded file to disk using streaming (memory-efficient).
+        
+        Args:
+            file_stream: File-like object to read from (e.g., UploadFile)
+            filename: Name of the file to save
+            max_size_mb: Maximum file size in MB (default 500MB)
+        
+        Returns:
+            Path to saved file
+        
+        Raises:
+            ValueError: If file exceeds max_size_mb
+        """
+        file_path = self.upload_dir / filename
+        max_size_bytes = max_size_mb * 1024 * 1024  # Convert MB to bytes
+        total_size = 0
+        
+        with open(file_path, 'wb') as f:
+            # Read in chunks to avoid loading entire file into memory
+            chunk_size = 8192  # 8KB chunks
+            while True:
+                chunk = await file_stream.read(chunk_size)
+                if not chunk:
+                    break
+                
+                total_size += len(chunk)
+                if total_size > max_size_bytes:
+                    # Clean up partial file
+                    file_path.unlink(missing_ok=True)
+                    raise ValueError(
+                        f"File size ({total_size / (1024*1024):.1f} MB) exceeds maximum allowed size ({max_size_mb} MB)"
+                    )
+                
+                f.write(chunk)
+        
+        return str(file_path)
 
     def _normalize_slice(self, slice_data: np.ndarray) -> np.ndarray:
         """

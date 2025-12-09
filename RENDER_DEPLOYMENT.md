@@ -198,6 +198,37 @@ Services depend on each other in this order:
 3. Deploy Engine (after all backend services are up)
 4. Deploy Frontend (after Engine is up)
 
+## Memory Optimization for Free Tier
+
+### File Upload Limits
+
+The Engine service uses **streaming uploads** to handle large CT scan files (.nii) efficiently:
+
+- **Maximum file size**: 500MB per file (configurable in code)
+- **Memory-efficient**: Files are streamed directly to disk without loading entire file into memory
+- **Free tier compatible**: Optimized to work within Render's free tier memory limits (512MB RAM)
+
+### If You Still Hit Memory Limits
+
+If you continue to experience memory issues with large files:
+
+1. **Reduce file size limit** (in `backend/engine/engine/routes/dashboard.py`):
+   ```python
+   max_size_mb=300  # Reduce from 500MB to 300MB
+   ```
+
+2. **Compress files before upload**: Use `.nii.gz` format (gzip compression) which can reduce file sizes by 50-70%
+
+3. **Upgrade only the Engine service**: Since only the Engine service handles file uploads, you can upgrade just that one service to Starter ($7/month) instead of all 5 services ($35/month)
+
+4. **Use direct cloud storage**: For very large files, consider uploading directly to Google Cloud Storage and referencing them
+
+### Monitoring Memory Usage
+
+- Check Render dashboard → Your service → Metrics → Memory usage
+- Free tier limit: 512MB RAM per service
+- If consistently hitting limits, consider upgrading only the Engine service
+
 ## Troubleshooting
 
 ### Build Failures

@@ -450,10 +450,17 @@ async def create_patient(
         if not (file_name.lower().endswith('.nii') or file_name.lower().endswith('.nii.gz')):
             raise HTTPException(status_code=400, detail="Only .nii or .nii.gz files are supported")
 
-        # Read file content and save to disk
-        file_content = await file.read()
-        saved_file_path = nii_processor.save_uploaded_file(file_content, file_name)
-        print(f"Saved uploaded NIfTI file: {saved_file_path}")
+        # Stream file directly to disk (memory-efficient for large files)
+        # Max file size: 500MB (adjustable based on Render free tier limits)
+        try:
+            saved_file_path = await nii_processor.save_uploaded_file_streaming(
+                file, 
+                file_name, 
+                max_size_mb=500
+            )
+            print(f"Saved uploaded NIfTI file: {saved_file_path}")
+        except ValueError as e:
+            raise HTTPException(status_code=413, detail=str(e))
 
         # Generate file ID
         file_id = f"file-{new_id}-1"
@@ -563,10 +570,17 @@ async def update_patient(
                     if not (upload_file.filename.lower().endswith('.nii') or upload_file.filename.lower().endswith('.nii.gz')):
                         raise HTTPException(status_code=400, detail=f"Only .nii or .nii.gz files are supported. Got: {upload_file.filename}")
 
-                    # Save uploaded file to disk
-                    file_content = await upload_file.read()
-                    saved_file_path = nii_processor.save_uploaded_file(file_content, upload_file.filename)
-                    print(f"Saved updated NIfTI file: {saved_file_path}")
+                    # Stream file directly to disk (memory-efficient for large files)
+                    # Max file size: 500MB (adjustable based on Render free tier limits)
+                    try:
+                        saved_file_path = await nii_processor.save_uploaded_file_streaming(
+                            upload_file,
+                            upload_file.filename,
+                            max_size_mb=500
+                        )
+                        print(f"Saved updated NIfTI file: {saved_file_path}")
+                    except ValueError as e:
+                        raise HTTPException(status_code=413, detail=str(e))
 
                     # Generate new file ID
                     existing_file_count += 1
