@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './PatientDashboardPage.css';
 import { apiService } from '../../services/api';
-import type { Message } from '../../services/api';
+import type { Message, PatientFile } from '../../services/api';
 import jsPDF from 'jspdf';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import type { SliceAnalysisResponse, BatchAnalysisResponse, Finding, Recommendation } from '../../types/ai-analysis';
@@ -42,37 +42,8 @@ const PatientDashboardPage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load session from localStorage on component mount
-  useEffect(() => {
-    const patientId = patient?.fhirId || patient?.id;
-    if (patientId) {
-      const sessionKey = `chat_session_${patientId}`;
-      const savedSessionId = localStorage.getItem(sessionKey);
-      
-      if (savedSessionId) {
-        console.log(`Restoring session ${savedSessionId} for patient ${patientId}`);
-        setSessionId(savedSessionId);
-        
-        // Try to restore conversation history
-        restoreConversationHistory(savedSessionId);
-      } else {
-        console.log(`No saved session found for patient ${patientId}`);
-      }
-    }
-  }, [patient?.fhirId, patient?.id]);
-
-  // Save session ID to localStorage whenever it changes
-  useEffect(() => {
-    const patientId = patient?.fhirId || patient?.id;
-    if (sessionId && patientId) {
-      const sessionKey = `chat_session_${patientId}`;
-      localStorage.setItem(sessionKey, sessionId);
-      console.log(`Saved session ${sessionId} for patient ${patientId}`);
-    }
-  }, [sessionId, patient?.fhirId, patient?.id]);
-
   // Function to restore conversation history from backend
-  const restoreConversationHistory = async (savedSessionId: string) => {
+  const restoreConversationHistory = useCallback(async (savedSessionId: string) => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/chat/history/${savedSessionId}`,
@@ -109,7 +80,26 @@ const PatientDashboardPage: React.FC = () => {
       console.error('Error restoring conversation history:', error);
       // If restoration fails, just use the initial greeting
     }
-  };
+  }, [patient]);
+
+  // Load session from localStorage on component mount
+  useEffect(() => {
+    const patientId = patient?.fhirId || patient?.id;
+    if (patientId) {
+      const sessionKey = `chat_session_${patientId}`;
+      const savedSessionId = localStorage.getItem(sessionKey);
+      
+      if (savedSessionId) {
+        console.log(`Restoring session ${savedSessionId} for patient ${patientId}`);
+        setSessionId(savedSessionId);
+        
+        // Try to restore conversation history
+        restoreConversationHistory(savedSessionId);
+      } else {
+        console.log(`No saved session found for patient ${patientId}`);
+      }
+    }
+  }, [patient?.fhirId, patient?.id, restoreConversationHistory]);
 
   // Function to clear conversation
   const handleClearConversation = async () => {
@@ -167,7 +157,7 @@ const PatientDashboardPage: React.FC = () => {
   const [ctImages, setCtImages] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [patientFiles, setPatientFiles] = useState<any[]>([]);
+  const [patientFiles, setPatientFiles] = useState<PatientFile[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -196,7 +186,20 @@ const PatientDashboardPage: React.FC = () => {
   const [expandedFindings, setExpandedFindings] = useState<Set<string>>(new Set());
 
   // Patient normalized data state
-  const [patientNormalizedData, setPatientNormalizedData] = useState<any>(null);
+  interface PatientNormalizedData {
+    encounters?: Array<{
+      start: string;
+      observations?: Array<{
+        code?: { text?: string };
+        value?: { value?: number };
+        components?: Array<{ text?: string; value?: { value?: number } }>;
+      }>;
+    }>;
+    medications?: unknown[];
+    observations?: unknown[];
+    conditions?: unknown[];
+  }
+  const [patientNormalizedData, setPatientNormalizedData] = useState<PatientNormalizedData | null>(null);
 
   // Sidebar collapse state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -260,7 +263,7 @@ const PatientDashboardPage: React.FC = () => {
   }, [patient]);
 
   // Load images for a specific file
-  const loadImagesForFile = async (fileId: string) => {
+  const loadImagesForFile = useCallback(async (fileId: string) => {
     if (!patient) return;
 
     try {
@@ -306,7 +309,7 @@ const PatientDashboardPage: React.FC = () => {
     } finally {
       setLoadingImages(false);
     }
-  };
+  }, [patient]);
 
   // Load CT files for the selected patient
   useEffect(() => {
@@ -362,7 +365,7 @@ const PatientDashboardPage: React.FC = () => {
     };
 
     loadPatientFiles();
-  }, [patient]);
+  }, [patient, loadImagesForFile]);
 
   // Chat functionality
   const scrollToBottom = () => {
@@ -452,19 +455,17 @@ const PatientDashboardPage: React.FC = () => {
   };
 
   // Image/Slice navigation (between slices within the current image set)
-  const handlePrevImage = () => {
+  const handlePrevImage = useCallback(() => {
     if (ctImages.length > 0) {
-      const newIndex = (currentImageIndex - 1 + ctImages.length) % ctImages.length;
-      setCurrentImageIndex(newIndex);
+      setCurrentImageIndex((prevIndex) => (prevIndex - 1 + ctImages.length) % ctImages.length);
     }
-  };
+  }, [ctImages.length]);
 
-  const handleNextImage = () => {
+  const handleNextImage = useCallback(() => {
     if (ctImages.length > 0) {
-      const newIndex = (currentImageIndex + 1) % ctImages.length;
-      setCurrentImageIndex(newIndex);
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % ctImages.length);
     }
-  };
+  }, [ctImages.length]);
 
   // Jump to specific slice
   const handleJumpToSlice = () => {
@@ -532,9 +533,9 @@ const PatientDashboardPage: React.FC = () => {
   };
 
   // Toggle auto-play
-  const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-  };
+  const togglePlay = useCallback(() => {
+    setIsPlaying((prev) => !prev);
+  }, []);
 
   // Auto-play effect
   React.useEffect(() => {
@@ -588,7 +589,7 @@ const PatientDashboardPage: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, ctImages.length, currentImageIndex, previewModalOpen, modalZoom]);
+  }, [activeTab, ctImages.length, previewModalOpen, modalZoom, handleNextImage, handlePrevImage, togglePlay]);
 
   // AI Analysis function
   const triggerAiAnalysis = async () => {
@@ -831,7 +832,8 @@ const PatientDashboardPage: React.FC = () => {
           // Remove soft hyphens
           .replace(/\u00AD/g, '')
           // Remove control characters and other problematic Unicode
-          .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+          // eslint-disable-next-line no-control-regex
+          .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
           // Remove combining diacritical marks that might cause issues
           .replace(/[\u0300-\u036F]/g, '')
           // Normalize unicode (decomposed to composed)
@@ -1048,7 +1050,7 @@ const PatientDashboardPage: React.FC = () => {
   // Render different tab content
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'summary':
+      case 'summary': {
         // Calculate patient age
         const calculateAge = (birthDate: string) => {
           if (!birthDate) return null;
@@ -1158,10 +1160,15 @@ const PatientDashboardPage: React.FC = () => {
           // Extract vital signs from observations
           const observations = latestEncounter.observations || [];
 
-          const tempObs = observations.find((obs: any) => obs.code?.text === 'Body temperature');
-          const hrObs = observations.find((obs: any) => obs.code?.text === 'Heart rate');
-          const rrObs = observations.find((obs: any) => obs.code?.text === 'Respiratory rate');
-          const o2Obs = observations.find((obs: any) => obs.code?.text === 'Oxygen saturation in Arterial blood');
+          interface Observation {
+            code?: { text?: string };
+            value?: { value?: number };
+            components?: Array<{ text?: string; value?: { value?: number } }>;
+          }
+          const tempObs = observations.find((obs: Observation) => obs.code?.text === 'Body temperature');
+          const hrObs = observations.find((obs: Observation) => obs.code?.text === 'Heart rate');
+          const rrObs = observations.find((obs: Observation) => obs.code?.text === 'Respiratory rate');
+          const o2Obs = observations.find((obs: Observation) => obs.code?.text === 'Oxygen saturation in Arterial blood');
 
           if (tempObs?.value?.value) {
             const tempValue = tempObs.value.value;
@@ -1208,13 +1215,17 @@ const PatientDashboardPage: React.FC = () => {
           }
 
           // Extract blood pressure trend from encounters
-          bloodPressureTrendData = patientNormalizedData.encounters.slice(0, 4).reverse().map((enc: any) => {
-            const bpObservation = enc.observations?.find((obs: any) =>
+          interface Encounter {
+            start: string;
+            observations?: Observation[];
+          }
+          bloodPressureTrendData = patientNormalizedData.encounters.slice(0, 4).reverse().map((enc: Encounter) => {
+            const bpObservation = enc.observations?.find((obs: Observation) =>
               obs.code?.text === 'Blood pressure panel with all children optional'
             );
 
-            const systolicComp = bpObservation?.components?.find((c: any) => c.text === 'Systolic blood pressure');
-            const diastolicComp = bpObservation?.components?.find((c: any) => c.text === 'Diastolic blood pressure');
+            const systolicComp = bpObservation?.components?.find((c: { text?: string; value?: { value?: number } }) => c.text === 'Systolic blood pressure');
+            const diastolicComp = bpObservation?.components?.find((c: { text?: string; value?: { value?: number } }) => c.text === 'Diastolic blood pressure');
 
             const systolic = systolicComp?.value?.value || 120;
             const diastolic = diastolicComp?.value?.value || 80;
@@ -1266,8 +1277,9 @@ const PatientDashboardPage: React.FC = () => {
                       <XAxis dataKey="name" />
                       <YAxis />
                       <Tooltip
-                        content={({ active, payload }: any) => {
-                          if (active && payload && payload.length) {
+                        content={({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; unit: string; normal: number; payload?: { name: string; value: number; unit: string; normal: number } }> }) => {
+                          if (active && payload && payload.length && payload[0]) {
+                            const data = payload[0].payload || payload[0];
                             return (
                               <div style={{
                                 background: 'white',
@@ -1275,12 +1287,12 @@ const PatientDashboardPage: React.FC = () => {
                                 border: '1px solid #ccc',
                                 borderRadius: '8px'
                               }}>
-                                <p style={{ margin: 0, fontWeight: 600 }}>{payload[0].payload.name}</p>
+                                <p style={{ margin: 0, fontWeight: 600 }}>{data.name}</p>
                                 <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
-                                  Current: {payload[0].value} {payload[0].payload.unit}
+                                  Current: {payload[0].value} {data.unit}
                                 </p>
                                 <p style={{ margin: '4px 0 0 0', color: '#64748b' }}>
-                                  Normal: {payload[0].payload.normal} {payload[0].payload.unit}
+                                  Normal: {data.normal} {data.unit}
                                 </p>
                               </div>
                             );
@@ -1361,7 +1373,10 @@ const PatientDashboardPage: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => `${entry.name}: ${entry.value}`}
+                        label={(props) => {
+                          const entry = props as unknown as { name: string; value: number };
+                          return `${entry.name}: ${entry.value}`;
+                        }}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -1388,7 +1403,10 @@ const PatientDashboardPage: React.FC = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => `${entry.category}: ${entry.count}`}
+                        label={(props) => {
+                          const entry = props as unknown as { category: string; count: number };
+                          return `${entry.category}: ${entry.count}`;
+                        }}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="count"
@@ -1408,8 +1426,9 @@ const PatientDashboardPage: React.FC = () => {
             </div>
           </div>
         );
+      }
 
-      case 'ct-analysis':
+      case 'ct-analysis': {
         return (
           <div className="tab-content ct-analysis-tab">
             <div className="ct-header">
@@ -1719,8 +1738,9 @@ const PatientDashboardPage: React.FC = () => {
             </div>
           </div>
         );
+      }
 
-      case 'ai-results':
+      case 'ai-results': {
         return (
           <div className="tab-content ai-results-tab">
             <div className="ai-header">
@@ -1993,8 +2013,9 @@ const PatientDashboardPage: React.FC = () => {
             )}
           </div>
         );
+      }
 
-      case 'chat':
+      case 'chat': {
         return (
           <div className="tab-content chat-tab">
             <div className="chat-header">
@@ -2128,6 +2149,7 @@ const PatientDashboardPage: React.FC = () => {
             </div>
           </div>
         );
+      }
 
       default:
         return <div>Tab content not found</div>;

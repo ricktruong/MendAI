@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './PatientListPage.css';
 import { apiService } from '../../services/api';
@@ -72,18 +72,7 @@ const PatientListPage: React.FC = () => {
   const [currentPatientFiles, setCurrentPatientFiles] = useState<PatientFile[]>([]);
   const [viewingPatient, setViewingPatient] = useState<CtCase | null>(null);
 
-    // Check authentication and load dashboard data
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    loadPatientListData();
-  }, [navigate, currentPage, pageSize]); // Reload when page or page size changes
-
-  const loadPatientListData = async () => {
+  const loadPatientListData = useCallback(async () => {
     try {
       setIsLoading(true);
       // Load patients for current page
@@ -122,7 +111,18 @@ const PatientListPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, pageSize]);
+
+  // Check authentication and load dashboard data
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login');
+      return;
+    }
+
+    loadPatientListData();
+  }, [navigate, currentPage, pageSize, loadPatientListData]); // Reload when page or page size changes
 
   // Search functionality
   useEffect(() => {
@@ -348,25 +348,26 @@ const PatientListPage: React.FC = () => {
       const response = await apiService.updatePatient(editPatient.id, formData);
 
       if (response.success && response.case) {
+        const caseData = response.case;
         // Update the specific case in the list
         const updatedCases = ctCases.map(c =>
           c.id === editPatient.id
             ? {
                 ...c,  // Keep all existing fields
-                id: response.case.id,
-                patientName: response.case.patient_name,
-                fileName: response.case.file_name,
-                uploadedAt: response.case.uploaded_at,
-                files: response.case.files || [],
+                id: caseData.id,
+                patientName: caseData.patient_name,
+                fileName: caseData.file_name,
+                uploadedAt: caseData.uploaded_at,
+                files: caseData.files || [],
                 // Update FHIR fields if provided
-                fhirId: response.case.fhirId ?? c.fhirId,
-                birthDate: response.case.birthDate ?? c.birthDate,
-                gender: response.case.gender ?? c.gender,
-                race: response.case.race ?? c.race,
-                ethnicity: response.case.ethnicity ?? c.ethnicity,
-                maritalStatus: response.case.maritalStatus ?? c.maritalStatus,
-                managingOrganization: response.case.managingOrganization ?? c.managingOrganization,
-                language: response.case.language ?? c.language
+                fhirId: caseData.fhirId ?? c.fhirId,
+                birthDate: caseData.birthDate ?? c.birthDate,
+                gender: caseData.gender ?? c.gender,
+                race: caseData.race ?? c.race,
+                ethnicity: caseData.ethnicity ?? c.ethnicity,
+                maritalStatus: caseData.maritalStatus ?? c.maritalStatus,
+                managingOrganization: caseData.managingOrganization ?? c.managingOrganization,
+                language: caseData.language ?? c.language
               }
             : c
         );
@@ -375,7 +376,7 @@ const PatientListPage: React.FC = () => {
         setFilteredCases(updatedCases);
 
         // Update current patient files display
-        setCurrentPatientFiles(response.case.files || []);
+        setCurrentPatientFiles(caseData.files || []);
 
         // Close modal and reset form
         handleCloseModal();

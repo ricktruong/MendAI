@@ -6,7 +6,7 @@
 import { Page, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { SliceAnalysisResult, BatchAnalysisResult } from './imaging-api-client';
+import type { SliceAnalysisResult } from './imaging-api-client';
 
 /**
  * Wait for analysis to complete in the UI
@@ -38,14 +38,14 @@ export async function waitForElement(
 /**
  * Validate slice analysis result structure
  */
-export function validateAnalysisResult(result: any): boolean {
+export function validateAnalysisResult(result: unknown): boolean {
   if (!result || typeof result !== 'object') {
     return false;
   }
 
   // Required fields
-  if (!result.hasOwnProperty('findings')) return false;
-  if (!result.hasOwnProperty('ai_confidence')) return false;
+  if (!Object.prototype.hasOwnProperty.call(result, 'findings')) return false;
+  if (!Object.prototype.hasOwnProperty.call(result, 'ai_confidence')) return false;
 
   // Validate confidence range
   if (
@@ -82,25 +82,25 @@ export function validateAnalysisResult(result: any): boolean {
 /**
  * Validate batch analysis result structure
  */
-export function validateBatchAnalysisResult(result: any): boolean {
+export function validateBatchAnalysisResult(result: unknown): boolean {
   if (!result || typeof result !== 'object') {
     return false;
   }
 
   // Required fields
-  if (!result.hasOwnProperty('overall_summary')) return false;
-  if (!result.hasOwnProperty('total_slices')) return false;
-  if (!result.hasOwnProperty('analyzed_slices')) return false;
+  if (!Object.prototype.hasOwnProperty.call(result, 'overall_summary')) return false;
+  if (!Object.prototype.hasOwnProperty.call(result, 'total_slices')) return false;
+  if (!Object.prototype.hasOwnProperty.call(result, 'analyzed_slices')) return false;
 
   // Validate overall summary
-  const summary = result.overall_summary;
+  const summary = (result as { overall_summary?: unknown }).overall_summary;
   if (!summary || typeof summary !== 'object') {
     return false;
   }
 
   if (
-    !summary.hasOwnProperty('total_findings') ||
-    !summary.hasOwnProperty('diagnosis')
+    !Object.prototype.hasOwnProperty.call(summary, 'total_findings') ||
+    !Object.prototype.hasOwnProperty.call(summary, 'diagnosis')
   ) {
     return false;
   }
@@ -183,7 +183,7 @@ export async function captureFailureContext(
 
   // Capture console logs
   const logs = await page.evaluate(() => {
-    return (window as any).testLogs || [];
+    return (window as { testLogs?: unknown[] }).testLogs || [];
   });
 
   const logsPath = path.join(outputDir, `${baseFilename}-logs.json`);
@@ -204,7 +204,7 @@ export async function waitForAPIResponse(
   page: Page,
   urlPattern: string | RegExp,
   timeout: number = 60000
-): Promise<any> {
+): Promise<unknown> {
   const response = await page.waitForResponse(
     (res) => {
       const url = res.url();
@@ -260,12 +260,12 @@ export async function retry<T>(
   options: {
     maxRetries?: number;
     delay?: number;
-    onRetry?: (attempt: number, error: any) => void;
+    onRetry?: (attempt: number, error: unknown) => void;
   } = {}
 ): Promise<T> {
   const { maxRetries = 3, delay = 1000, onRetry } = options;
 
-  let lastError: any;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -298,7 +298,7 @@ export function generateTestPatientId(): string {
  * Clean up test data via API
  */
 export async function cleanupTestData(
-  apiClient: any,
+  apiClient: { deleteScan: (scanId: string) => Promise<unknown> },
   scanId: string
 ): Promise<void> {
   try {

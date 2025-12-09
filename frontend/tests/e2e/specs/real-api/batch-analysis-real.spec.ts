@@ -101,7 +101,7 @@ test.describe.skip('Real Batch Analysis Tests', () => {
               }
             }
           }
-        } catch (e) {
+        } catch {
           // Element might not be available yet
         }
       }, 5000);

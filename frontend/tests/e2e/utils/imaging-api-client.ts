@@ -309,19 +309,20 @@ export class ImagingAPIClient {
     options: {
       maxRetries?: number;
       retryDelay?: number;
-      shouldRetry?: (error: any) => boolean;
+      shouldRetry?: (error: unknown) => boolean;
     } = {}
   ): Promise<T> {
     const {
       maxRetries = 3,
       retryDelay = 5000,
-      shouldRetry = (error) => {
+      shouldRetry = (error: unknown) => {
         // Retry on network errors and 5xx errors
-        return !error.response || error.response.status >= 500;
+        const axiosError = error as { response?: { status?: number } };
+        return !axiosError.response || (axiosError.response.status ?? 0) >= 500;
       },
     } = options;
 
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {

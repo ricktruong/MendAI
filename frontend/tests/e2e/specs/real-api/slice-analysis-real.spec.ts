@@ -7,7 +7,6 @@ import { test, expect } from '@playwright/test';
 import { ImagingAPIClient } from '../../utils/imaging-api-client';
 import { MedicalImageManager } from '../../utils/medical-image-manager';
 import {
-  waitForAnalysisComplete,
   validateAnalysisResult,
   captureFailureContext,
   waitForAPIResponse,
@@ -257,7 +256,7 @@ test.describe.skip('Real Slice Analysis Tests', () => {
       expect(isLoading || hasError).toBe(true);
 
       console.log('Timeout handling verified');
-    } catch (error) {
+    } catch {
       // Expected to fail due to timeout - this is OK
       console.log('Timeout test completed as expected');
     }

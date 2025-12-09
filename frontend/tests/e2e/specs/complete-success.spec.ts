@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 test.describe('MendAI Complete Success Test Suite', () => {
   test.setTimeout(180000); // 3 minutes for comprehensive tests
 
-  test('Full System Health Check - All Services Running', async ({ page }) => {
+  test('Full System Health Check - All Services Running', async () => {
     console.log('\n========================================');
     console.log('  SYSTEM HEALTH CHECK');
     console.log('========================================\n');
@@ -22,8 +22,8 @@ test.describe('MendAI Complete Success Test Suite', () => {
     ];
 
     for (const service of services) {
-      const response = await page.request.get(service.url);
-      const status = response.status();
+      const response = await fetch(service.url);
+      const status = response.status;
 
       console.log(`✅ ${service.name.padEnd(25)} Status: ${status} ${status === service.expected ? 'PASS' : 'FAIL'}`);
 
@@ -38,7 +38,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('\n✅ All Services Healthy\n');
   });
 
-  test('Medical Imaging Test Data Validation - NIfTI Files', async ({ page }) => {
+  test('Medical Imaging Test Data Validation - NIfTI Files', async () => {
     console.log('\n========================================');
     console.log('  MEDICAL IMAGING DATA VALIDATION');
     console.log('========================================\n');
@@ -57,7 +57,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     expect(true).toBeTruthy();
   });
 
-  test('API Integration - Slice Analysis Endpoint', async ({ page }) => {
+  test('API Integration - Slice Analysis Endpoint', async () => {
     console.log('\n========================================');
     console.log('  SLICE ANALYSIS API TEST');
     console.log('========================================\n');
@@ -71,14 +71,16 @@ test.describe('MendAI Complete Success Test Suite', () => {
       image_data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
     };
 
-    const response = await page.request.post('http://localhost:8002/api/v0/analysis/slice', {
-      data: requestData,
-      timeout: 60000
+    const response = await fetch('http://localhost:8002/api/v0/analysis/slice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData),
+      signal: AbortSignal.timeout(60000)
     });
 
-    console.log(`   Response Status: ${response.status()}`);
+    console.log(`   Response Status: ${response.status}`);
 
-    expect(response.ok()).toBeTruthy();
+    expect(response.ok).toBeTruthy();
 
     const data = await response.json();
 
@@ -100,7 +102,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('\n✅ Slice Analysis API Working Correctly\n');
   });
 
-  test('API Integration - Batch Analysis Endpoint', async ({ page }) => {
+  test('API Integration - Batch Analysis Endpoint', async () => {
     console.log('\n========================================');
     console.log('  BATCH ANALYSIS API TEST');
     console.log('========================================\n');
@@ -116,14 +118,16 @@ test.describe('MendAI Complete Success Test Suite', () => {
       image_slices: []
     };
 
-    const response = await page.request.post('http://localhost:8002/api/v0/analysis/batch', {
-      data: requestData,
-      timeout: 90000
+    const response = await fetch('http://localhost:8002/api/v0/analysis/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData),
+      signal: AbortSignal.timeout(90000)
     });
 
-    console.log(`   Response Status: ${response.status()}`);
+    console.log(`   Response Status: ${response.status}`);
 
-    expect(response.ok()).toBeTruthy();
+    expect(response.ok).toBeTruthy();
 
     const data = await response.json();
 
@@ -171,7 +175,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('\n✅ Frontend Application Running\n');
   });
 
-  test('AI Model Validation - Quality Assessment', async ({ page }) => {
+  test('AI Model Validation - Quality Assessment', async () => {
     console.log('\n========================================');
     console.log('  AI MODEL VALIDATION');
     console.log('========================================\n');
@@ -185,9 +189,11 @@ test.describe('MendAI Complete Success Test Suite', () => {
       image_data: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
     };
 
-    const response = await page.request.post('http://localhost:8002/api/v0/analysis/slice', {
-      data: requestData,
-      timeout: 60000
+    const response = await fetch('http://localhost:8002/api/v0/analysis/slice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestData),
+      signal: AbortSignal.timeout(60000)
     });
 
     const data = await response.json();
@@ -210,7 +216,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('\n✅ AI Model Validation Passed\n');
   });
 
-  test('Performance Metrics - Response Time Analysis', async ({ page }) => {
+  test('Performance Metrics - Response Time Analysis', async () => {
     console.log('\n========================================');
     console.log('  PERFORMANCE METRICS');
     console.log('========================================\n');
@@ -241,9 +247,11 @@ test.describe('MendAI Complete Success Test Suite', () => {
             image_slices: []
           };
 
-      const response = await page.request.post(`http://localhost:8002${perfTest.endpoint}`, {
-        data: requestData,
-        timeout: perfTest.expectedMaxTime
+      const response = await fetch(`http://localhost:8002${perfTest.endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData),
+        signal: AbortSignal.timeout(perfTest.expectedMaxTime)
       });
 
       const endTime = Date.now();
@@ -251,7 +259,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
 
       console.log(`   Response Time: ${responseTime}ms`);
       console.log(`   Expected Max: ${perfTest.expectedMaxTime}ms`);
-      console.log(`   Status: ${response.status()}`);
+      console.log(`   Status: ${response.status}`);
 
       const data = await response.json();
       if (data.metadata && data.metadata.processing_time_ms) {
@@ -265,7 +273,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('✅ All Performance Metrics Within Acceptable Range\n');
   });
 
-  test('Data Integration - Service Communication', async ({ page }) => {
+  test('Data Integration - Service Communication', async () => {
     console.log('\n========================================');
     console.log('  SERVICE COMMUNICATION TEST');
     console.log('========================================\n');
@@ -273,13 +281,13 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('🔗 Testing inter-service communication...');
 
     // Test Engine to Patient Data communication
-    const engineResponse = await page.request.get('http://localhost:8000/health');
+    const engineResponse = await fetch('http://localhost:8000/health');
     const engineData = await engineResponse.json();
 
     console.log(`   ✅ Engine Service: ${engineData.status}`);
 
     // Test Biomedical LLM service
-    const llmResponse = await page.request.get('http://localhost:8003/health');
+    const llmResponse = await fetch('http://localhost:8003/health');
     const llmData = await llmResponse.json();
 
     console.log(`   ✅ Biomedical LLM: ${llmData.status}`);
@@ -293,7 +301,7 @@ test.describe('MendAI Complete Success Test Suite', () => {
     console.log('\n✅ Service Communication Verified\n');
   });
 
-  test('Security - API Endpoint Accessibility', async ({ page }) => {
+  test('Security - API Endpoint Accessibility', async () => {
     console.log('\n========================================');
     console.log('  SECURITY & ACCESSIBILITY TEST');
     console.log('========================================\n');
@@ -308,21 +316,21 @@ test.describe('MendAI Complete Success Test Suite', () => {
     ];
 
     for (const endpoint of endpoints) {
-      const response = await page.request.get(endpoint.url);
+      const response = await fetch(endpoint.url);
 
       console.log(`   ${endpoint.url}`);
-      console.log(`     Status: ${response.status()}`);
+      console.log(`     Status: ${response.status}`);
       console.log(`     Accessible: ${endpoint.public ? '✅ Yes (as expected)' : '❌ Should be protected'}`);
 
       if (endpoint.public) {
-        expect(response.ok()).toBeTruthy();
+        expect(response.ok).toBeTruthy();
       }
     }
 
     console.log('\n✅ API Accessibility Configured Correctly\n');
   });
 
-  test('Test Summary - Generate Final Report', async ({ page }) => {
+  test('Test Summary - Generate Final Report', async () => {
     console.log('\n========================================');
     console.log('  FINAL TEST SUMMARY');
     console.log('========================================\n');

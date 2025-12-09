@@ -1,4 +1,6 @@
 // API service layer for MendAI frontend
+import type { BatchAnalysisResponse, SliceAnalysisResponse } from '../types/ai-analysis';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // Constants
@@ -95,7 +97,28 @@ export interface PatientListData {
 }
 
 // Keep old name for backward compatibility
-export interface DashboardData extends PatientListData {}
+export type DashboardData = PatientListData;
+
+// Update patient response type
+export interface UpdatePatientResponse {
+  success: boolean;
+  case?: {
+    id: string;
+    patient_name: string;
+    file_name: string;
+    uploaded_at: string;
+    files?: PatientFile[];
+    fhirId?: string;
+    birthDate?: string;
+    gender?: string;
+    race?: string;
+    ethnicity?: string;
+    maritalStatus?: string;
+    managingOrganization?: string;
+    language?: string;
+  };
+  message?: string;
+}
 
 // API client class
 class ApiService {
@@ -154,7 +177,7 @@ class ApiService {
   // Authentication endpoints
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      await this.makeRequest<any>('/login/login', {
+      await this.makeRequest<LoginResponse>('/login/login', {
         method: 'POST',
         body: JSON.stringify(credentials),
       });
@@ -192,7 +215,7 @@ class ApiService {
   }
 
   // Update patient endpoint
-  async updatePatient(caseId: string, formData: FormData): Promise<any> {
+  async updatePatient(caseId: string, formData: FormData): Promise<UpdatePatientResponse> {
     const url = `${this.baseURL}/dashboard/patients/${caseId}`;
     
     // For file upload, we need to handle FormData differently
@@ -230,14 +253,14 @@ class ApiService {
   }
 
   // Delete patient endpoint
-  async deletePatient(caseId: string): Promise<any> {
-    return await this.makeRequest<any>(`/dashboard/patients/${caseId}`, {
+  async deletePatient(caseId: string): Promise<{ success: boolean; message?: string }> {
+    return await this.makeRequest<{ success: boolean; message?: string }>(`/dashboard/patients/${caseId}`, {
       method: 'DELETE',
     });
   }
 
   // Create patient endpoint
-  async createPatient(formData: FormData): Promise<any> {
+  async createPatient(formData: FormData): Promise<{ success: boolean; case?: unknown; message?: string }> {
     const url = `${this.baseURL}/dashboard/patients`;
     
     // For file upload, we need to handle FormData differently
@@ -301,8 +324,8 @@ class ApiService {
     sliceNumber: number,
     imageData: string,
     totalSlices?: number
-  ): Promise<any> {
-    return await this.makeRequest<any>('/ai-analysis/slice', {
+  ): Promise<SliceAnalysisResponse> {
+    return await this.makeRequest<SliceAnalysisResponse>('/ai-analysis/slice', {
       method: 'POST',
       body: JSON.stringify({
         patient_id: patientId,
@@ -320,7 +343,7 @@ class ApiService {
     sliceStart: number,
     sliceEnd: number,
     imageSlices: string[]
-  ): Promise<any> {
+  ): Promise<BatchAnalysisResponse> {
 
     let stepSize = 1;
 
@@ -330,7 +353,7 @@ class ApiService {
       imageSlices = imageSlices.filter((_, i) => i % stepSize === 0);
     }
 
-    return await this.makeRequest<any>('/ai-analysis/batch', {
+    return await this.makeRequest<BatchAnalysisResponse>('/ai-analysis/batch', {
       method: 'POST',
       body: JSON.stringify({
         patient_id: patientId,
