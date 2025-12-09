@@ -5,7 +5,7 @@ services:
     env: docker
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
-    plan: starter
+    plan: free
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,7 +18,7 @@ services:
     env: docker
     dockerfilePath: ./backend/engine/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -51,7 +51,7 @@ services:
     env: docker
     dockerfilePath: ./backend/patient_data/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -77,7 +77,7 @@ services:
     env: docker
     dockerfilePath: ./backend/medical_imaging/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -100,7 +100,7 @@ services:
     env: docker
     dockerfilePath: ./backend/biomedical_llm/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     envVars:
       - key: ENVIRONMENT
         value: production
