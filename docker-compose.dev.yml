@@ -51,9 +51,6 @@ services:
     environment:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
-      - HOST=0.0.0.0
-      - PORT=8000
-      - API_PREFIX=/api/v0
       - CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
       - SECRET_KEY=dev-secret-key-change-in-production
       - PYTHONUNBUFFERED=1
@@ -81,8 +78,6 @@ services:
     environment:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
-      - HOST=0.0.0.0
-      - PORT=8001
       - PYTHONUNBUFFERED=1
     command: poetry run uvicorn patient_data.main:app --host 0.0.0.0 --port 8001 --reload
     restart: unless-stopped
@@ -103,8 +98,6 @@ services:
     environment:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
-      - HOST=0.0.0.0
-      - PORT=8002
       - PYTHONUNBUFFERED=1
     command: poetry run uvicorn medical_imaging.main:app --host 0.0.0.0 --port 8002 --reload
     restart: unless-stopped
@@ -125,8 +118,6 @@ services:
     environment:
       - DEBUG=true
       - LOG_LEVEL=DEBUG
-      - HOST=0.0.0.0
-      - PORT=8003
       - PYTHONUNBUFFERED=1
     command: poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003 --reload
     restart: unless-stopped

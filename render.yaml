@@ -26,12 +26,6 @@ services:
         value: "false"
       - key: LOG_LEVEL
         value: INFO
-      - key: HOST
-        value: 0.0.0.0
-      - key: PORT
-        value: 8000
-      - key: API_PREFIX
-        value: /api/v0
       - key: PATIENT_DATA_SERVICE_URL
         sync: false  # Set to patient_data service URL
       - key: MEDICAL_IMAGING_SERVICE_URL
@@ -59,10 +53,6 @@ services:
         value: "false"
       - key: LOG_LEVEL
         value: INFO
-      - key: HOST
-        value: 0.0.0.0
-      - key: PORT
-        value: 8001
       - key: GOOGLE_CLOUD_PROJECT
         sync: false  # Set your Google Cloud project ID
       - key: GOOGLE_APPLICATION_CREDENTIALS
@@ -85,10 +75,6 @@ services:
         value: "false"
       - key: LOG_LEVEL
         value: INFO
-      - key: HOST
-        value: 0.0.0.0
-      - key: PORT
-        value: 8002
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
       - key: OPENAI_MODEL
@@ -108,10 +94,6 @@ services:
         value: "false"
       - key: LOG_LEVEL
         value: INFO
-      - key: HOST
-        value: 0.0.0.0
-      - key: PORT
-        value: 8003
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
       - key: OPENAI_MODEL
