@@ -22,20 +22,12 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: DEBUG
-        value: "false"
-      - key: LOG_LEVEL
-        value: INFO
       - key: PATIENT_DATA_SERVICE_URL
         sync: false  # Set to patient_data service URL
-      - key: MEDICAL_IMAGING_SERVICE_URL
+      - key: MEDICAL_IMAGING_URL
         sync: false  # Set to medical_imaging service URL
       - key: BIOMEDICAL_LLM_URL
         sync: false  # Set to biomedical_llm service URL
-      - key: CORS_ORIGINS
-        sync: false  # Set to frontend URL
-      - key: SECRET_KEY
-        generateValue: true
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
 
@@ -49,10 +41,6 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: DEBUG
-        value: "false"
-      - key: LOG_LEVEL
-        value: INFO
       - key: GOOGLE_CLOUD_PROJECT
         sync: false  # Set your Google Cloud project ID
       - key: GOOGLE_APPLICATION_CREDENTIALS
@@ -71,10 +59,6 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: DEBUG
-        value: "false"
-      - key: LOG_LEVEL
-        value: INFO
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
       - key: OPENAI_MODEL
@@ -90,10 +74,6 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: DEBUG
-        value: "false"
-      - key: LOG_LEVEL
-        value: INFO
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
       - key: OPENAI_MODEL

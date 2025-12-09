@@ -62,9 +62,8 @@ VITE_API_BASE_URL=https://mendai-engine.onrender.com
 
 ```
 PATIENT_DATA_SERVICE_URL=https://mendai-patient-data.onrender.com
-MEDICAL_IMAGING_SERVICE_URL=https://mendai-medical-imaging.onrender.com
+MEDICAL_IMAGING_URL=https://mendai-medical-imaging.onrender.com
 BIOMEDICAL_LLM_URL=https://mendai-biomedical-llm.onrender.com
-CORS_ORIGINS=["https://mendai-frontend.onrender.com"]
 OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
 
@@ -112,7 +111,6 @@ After all services are deployed, update the environment variables with the actua
    - Frontend → Engine URL
    - Engine → Patient Data, Medical Imaging, Biomedical LLM URLs
    - Biomedical LLM → Patient Data URL
-   - Engine → CORS_ORIGINS (Frontend URL)
 
 ### Step 5: Handle Google Cloud Credentials
 

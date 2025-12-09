@@ -155,8 +155,7 @@ SERVICE_HOST=0.0.0.0
 # API_KEY=your_api_key_here
 # API_URL=https://api.example.com
 
-# Security
-# SECRET_KEY=your_secret_key_here
+# Security (for future authentication features)
 # JWT_SECRET=your_jwt_secret_here
 
 # Add service-specific environment variables below

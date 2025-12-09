@@ -49,10 +49,9 @@ services:
     env_file:
       - ./backend/engine/.env
     environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
-      - CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
-      - SECRET_KEY=dev-secret-key-change-in-production
+      - PATIENT_DATA_SERVICE_URL=http://patient_data:8001
+      - MEDICAL_IMAGING_URL=http://medical_imaging:8002
+      - BIOMEDICAL_LLM_URL=http://biomedical_llm:8003
       - PYTHONUNBUFFERED=1
     # Enable hot-reload with --reload flag
     command: poetry run uvicorn engine.main:app --host 0.0.0.0 --port 8000 --reload
@@ -76,8 +75,6 @@ services:
     env_file:
       - ./backend/patient_data/.env
     environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
       - PYTHONUNBUFFERED=1
     command: poetry run uvicorn patient_data.main:app --host 0.0.0.0 --port 8001 --reload
     restart: unless-stopped
@@ -96,8 +93,6 @@ services:
     env_file:
       - ./backend/medical_imaging/.env
     environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
       - PYTHONUNBUFFERED=1
     command: poetry run uvicorn medical_imaging.main:app --host 0.0.0.0 --port 8002 --reload
     restart: unless-stopped
@@ -116,8 +111,7 @@ services:
     env_file:
       - ./backend/biomedical_llm/.env
     environment:
-      - DEBUG=true
-      - LOG_LEVEL=DEBUG
+      - PATIENT_DATA_URL=http://patient_data:8001
       - PYTHONUNBUFFERED=1
     command: poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003 --reload
     restart: unless-stopped

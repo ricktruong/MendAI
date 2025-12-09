@@ -20,10 +20,9 @@ services:
     env_file:
       - ./backend/engine/.env
     environment:
-      - DEBUG=false
-      - LOG_LEVEL=INFO
-      - CORS_ORIGINS=["http://localhost:3000", "http://127.0.0.1:3000"]
-      - SECRET_KEY=your-secret-key-here-change-in-production
+      - PATIENT_DATA_SERVICE_URL=http://patient_data:8001
+      - MEDICAL_IMAGING_URL=http://medical_imaging:8002
+      - BIOMEDICAL_LLM_URL=http://biomedical_llm:8003
     command: uvicorn engine.main:app --host 0.0.0.0 --port 8000
     restart: always
     depends_on:
@@ -41,9 +40,6 @@ services:
       - "127.0.0.1:8001:8001"
     env_file:
       - ./backend/patient_data/.env
-    environment:
-      - DEBUG=false
-      - LOG_LEVEL=INFO
     command: uvicorn patient_data.main:app --host 0.0.0.0 --port 8001
     restart: always
     networks:
@@ -57,9 +53,6 @@ services:
       - "127.0.0.1:8002:8002"
     env_file:
       - ./backend/medical_imaging/.env
-    environment:
-      - DEBUG=false
-      - LOG_LEVEL=INFO
     command: uvicorn medical_imaging.main:app --host 0.0.0.0 --port 8002
     restart: always
     networks:
@@ -74,8 +67,7 @@ services:
     env_file:
       - ./backend/biomedical_llm/.env
     environment:
-      - DEBUG=false
-      - LOG_LEVEL=INFO
+      - PATIENT_DATA_URL=http://patient_data:8001
     command: uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003
     restart: always
     networks:

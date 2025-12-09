@@ -577,8 +577,7 @@ ENVIRONMENT=production
 DEBUG=false
 LOG_LEVEL=WARNING
 OPENAI_API_KEY=sk-prod-key
-SECRET_KEY=strong-secret-key
-JWT_SECRET=jwt-secret
+# SECRET_KEY and JWT_SECRET not needed until authentication is implemented
 ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
