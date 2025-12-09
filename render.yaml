@@ -1,0 +1,120 @@
+services:
+  # Frontend Web Service
+  - type: web
+    name: mendai-frontend
+    env: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_BASE_URL
+        sync: false  # IMPORTANT: Set this to your engine service URL (e.g., https://mendai-engine.onrender.com) BEFORE first deployment
+
+  # Backend Engine Service (API Gateway)
+  - type: web
+    name: mendai-engine
+    env: docker
+    dockerfilePath: ./backend/engine/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: API_PREFIX
+        value: /api/v0
+      - key: PATIENT_DATA_SERVICE_URL
+        sync: false  # Set to patient_data service URL
+      - key: MEDICAL_IMAGING_SERVICE_URL
+        sync: false  # Set to medical_imaging service URL
+      - key: BIOMEDICAL_LLM_URL
+        sync: false  # Set to biomedical_llm service URL
+      - key: CORS_ORIGINS
+        sync: false  # Set to frontend URL
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false  # Set your OpenAI API key
+
+  # Patient Data Service
+  - type: web
+    name: mendai-patient-data
+    env: docker
+    dockerfilePath: ./backend/patient_data/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8001
+      - key: GOOGLE_CLOUD_PROJECT
+        sync: false  # Set your Google Cloud project ID
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false  # Set path or use service account JSON as env var
+      # If using service account JSON as environment variable:
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false  # Paste entire JSON content here
+
+  # Medical Imaging Service
+  - type: web
+    name: mendai-medical-imaging
+    env: docker
+    dockerfilePath: ./backend/medical_imaging/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8002
+      - key: OPENAI_API_KEY
+        sync: false  # Set your OpenAI API key
+      - key: OPENAI_MODEL
+        value: gpt-5.1
+
+  # Biomedical LLM Service
+  - type: web
+    name: mendai-biomedical-llm
+    env: docker
+    dockerfilePath: ./backend/biomedical_llm/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8003
+      - key: OPENAI_API_KEY
+        sync: false  # Set your OpenAI API key
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: PATIENT_DATA_URL
+        sync: false  # Set to patient_data service URL

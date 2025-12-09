@@ -1,0 +1,71 @@
+# Render ignore file - files/directories to exclude from deployment
+
+# Development files
+*.md
+!README.md
+!RENDER_DEPLOYMENT.md
+.gitignore
+.dockerignore
+*.log
+*.swp
+*.swo
+*~
+
+# Environment files (secrets should be set in Render dashboard)
+.env
+.env.local
+.env.*.local
+
+# Test files
+**/tests/
+**/test_*.py
+**/*_test.py
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/coverage/
+**/.coverage
+
+# Documentation
+docs/
+e2e-docs/
+*.md
+!README.md
+!RENDER_DEPLOYMENT.md
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+.DS_Store
+
+# Build artifacts (will be rebuilt on Render)
+dist/
+build/
+*.egg-info/
+
+# Node modules (will be installed during build)
+node_modules/
+
+# Python virtual environments
+venv/
+env/
+.venv/
+
+# Docker compose files (not needed for Render)
+docker-compose*.yml
+Makefile
+
+# Scripts
+setup.sh
+*.sh
+*.bat
+
+# Playwright
+playwright-report/
+test-results/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

@@ -10,6 +10,7 @@ This module provides a set of utilities to:
 """
 
 import os
+import json
 import traceback
 import requests
 from typing import Dict, Any, List, Optional
@@ -26,11 +27,12 @@ load_dotenv()
 # -------------------------------
 # Environment Config
 # -------------------------------
-PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+PROJECT_ID = os.getenv("GCP_PROJECT_ID") or os.getenv("GOOGLE_CLOUD_PROJECT")
 LOCATION = os.getenv("GCP_LOCATION")
 DATASET_ID = os.getenv("GCP_DATASET_ID")
 FHIR_STORE_ID = os.getenv("GCP_FHIR_STORE_ID")
 CREDENTIALS_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
 
 FHIR_BASE_URL = (
     f"https://healthcare.googleapis.com/v1/projects/{PROJECT_ID}"
@@ -100,13 +102,37 @@ def get_cache_stats() -> Dict:
 # -------------------------------
 # Google Authentication
 # -------------------------------
+def get_google_credentials():
+    """Get Google Cloud credentials from environment variable or file path.
+    Supports both GOOGLE_SERVICE_ACCOUNT_JSON (for Render) and GOOGLE_APPLICATION_CREDENTIALS (file path).
+    """
+    # Priority 1: Use JSON from environment variable (for Render/cloud deployments)
+    if GOOGLE_SERVICE_ACCOUNT_JSON:
+        try:
+            credentials_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+            return service_account.Credentials.from_service_account_info(
+                credentials_info,
+                scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
+            )
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid GOOGLE_SERVICE_ACCOUNT_JSON: {str(e)}")
+    
+    # Priority 2: Use file path (for local development)
+    if CREDENTIALS_PATH and os.path.exists(CREDENTIALS_PATH):
+        return service_account.Credentials.from_service_account_file(
+            CREDENTIALS_PATH,
+            scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
+        )
+    
+    raise ValueError(
+        "Google Cloud credentials not found. Set either GOOGLE_SERVICE_ACCOUNT_JSON "
+        "(JSON string) or GOOGLE_APPLICATION_CREDENTIALS (file path)."
+    )
+
 def get_google_auth_token():
     """Authenticate using service account credentials and return a valid OAuth token
     for Google Healthcare API requests."""
-    credentials = service_account.Credentials.from_service_account_file(
-        CREDENTIALS_PATH,
-        scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
-    )
+    credentials = get_google_credentials()
     credentials.refresh(Request())
     return credentials.token
 
@@ -358,7 +384,9 @@ def get_imaging_files_for_patient(patient_id: str) -> List[str]:
     prefix = f"Patient/{patient_id}/"
 
     try:
-        client = storage.Client.from_service_account_json(CREDENTIALS_PATH)
+        # Use credentials helper function
+        credentials = get_google_credentials()
+        client = storage.Client(credentials=credentials, project=PROJECT_ID)
         bucket = client.bucket(bucket_name)
         blobs = list(bucket.list_blobs(prefix=prefix))
 
