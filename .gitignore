@@ -30,7 +30,9 @@ share/python-wheels/
 MANIFEST
 
 # Poetry
-poetry.lock
+# Note: poetry.lock files should be committed for reproducible builds
+# Uncomment the line below if you want to ignore them (not recommended for production)
+# poetry.lock
 
 # Virtual environments
 venv/
