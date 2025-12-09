@@ -1,11 +1,4 @@
 # Docker Compose for Development Environment
-# Usage: docker-compose -f docker-compose.dev.yml up
-#
-# Benefits:
-# - Volume mapping for hot-reload (no rebuild needed)
-# - Debug mode enabled
-# - Live code changes reflected immediately
-
 services:
   frontend:
     build:
@@ -14,14 +7,12 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
-      # Map source code for hot-reload
       - ./frontend/src:/app/src:cached
       - ./frontend/public:/app/public:cached
       - ./frontend/index.html:/app/index.html:cached
       - ./frontend/vite.config.ts:/app/vite.config.ts:cached
       - ./frontend/tsconfig.json:/app/tsconfig.json:cached
       - ./frontend/tsconfig.node.json:/app/tsconfig.node.json:cached
-      # Don't map node_modules (use container's version)
     environment:
       - NODE_ENV=development
       - VITE_API_BASE_URL=http://localhost:8000
@@ -39,21 +30,15 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      # Map source code for hot-reload
       - ./backend/engine/engine:/app/engine:cached
       - ./backend/common:/app/../common:cached
-      # Persist uploaded files across container restarts
       - ./backend/engine/uploaded_files:/app/uploaded_files:delegated
-      # Don't map these (use container's version)
-      # - NOT mapping .venv or poetry cache
     env_file:
       - ./backend/engine/.env
     environment:
       - PATIENT_DATA_SERVICE_URL=http://patient_data:8001
       - MEDICAL_IMAGING_URL=http://medical_imaging:8002
       - BIOMEDICAL_LLM_URL=http://biomedical_llm:8003
-      - PYTHONUNBUFFERED=1
-    # Enable hot-reload with --reload flag
     command: poetry run uvicorn engine.main:app --host 0.0.0.0 --port 8000 --reload
     restart: unless-stopped
     depends_on:
@@ -72,10 +57,12 @@ services:
     volumes:
       - ./backend/patient_data/patient_data:/app/patient_data:cached
       - ./backend/common:/app/../common:cached
+      # Mount Google Cloud credentials file for local development
+      - ./backend/patient_data/mendai-470816-d39912146cc6.json:/app/credentials.json:ro
     env_file:
       - ./backend/patient_data/.env
     environment:
-      - PYTHONUNBUFFERED=1
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
     command: poetry run uvicorn patient_data.main:app --host 0.0.0.0 --port 8001 --reload
     restart: unless-stopped
     networks:
@@ -92,8 +79,6 @@ services:
       - ./backend/common:/app/../common:cached
     env_file:
       - ./backend/medical_imaging/.env
-    environment:
-      - PYTHONUNBUFFERED=1
     command: poetry run uvicorn medical_imaging.main:app --host 0.0.0.0 --port 8002 --reload
     restart: unless-stopped
     networks:
@@ -112,7 +97,6 @@ services:
       - ./backend/biomedical_llm/.env
     environment:
       - PATIENT_DATA_URL=http://patient_data:8001
-      - PYTHONUNBUFFERED=1
     command: poetry run uvicorn biomedical_llm.main:app --host 0.0.0.0 --port 8003 --reload
     restart: unless-stopped
     networks:

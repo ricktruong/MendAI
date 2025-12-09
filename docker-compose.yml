@@ -40,6 +40,11 @@ services:
       - "127.0.0.1:8001:8001"
     env_file:
       - ./backend/patient_data/.env
+    volumes:
+      # Mount Google Cloud credentials file for local development
+      - ./backend/patient_data/mendai-470816-d39912146cc6.json:/app/credentials.json:ro
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
     command: uvicorn patient_data.main:app --host 0.0.0.0 --port 8001
     restart: always
     networks:
