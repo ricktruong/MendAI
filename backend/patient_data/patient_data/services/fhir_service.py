@@ -14,6 +14,7 @@ import json
 import traceback
 import requests
 from typing import Dict, Any, List, Optional
+from urllib.parse import urlparse, parse_qs, unquote
 from google.auth.transport.requests import Request
 from google.oauth2 import service_account
 from google.cloud import storage
@@ -105,14 +106,21 @@ def get_cache_stats() -> Dict:
 def get_google_credentials():
     """Get Google Cloud credentials from environment variable or file path.
     Supports both GOOGLE_SERVICE_ACCOUNT_JSON (for Render) and GOOGLE_APPLICATION_CREDENTIALS (file path).
+    Includes scopes for both Healthcare API and Cloud Storage access.
     """
+    # Scopes needed for both FHIR API and GCS bucket access
+    required_scopes = [
+        "https://www.googleapis.com/auth/cloud-healthcare",
+        "https://www.googleapis.com/auth/cloud-platform"  # Includes storage access
+    ]
+    
     # Priority 1: Use JSON from environment variable (for Render/cloud deployments)
     if GOOGLE_SERVICE_ACCOUNT_JSON:
         try:
             credentials_info = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
             return service_account.Credentials.from_service_account_info(
                 credentials_info,
-                scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
+                scopes=required_scopes
             )
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid GOOGLE_SERVICE_ACCOUNT_JSON: {str(e)}")
@@ -121,7 +129,7 @@ def get_google_credentials():
     if CREDENTIALS_PATH and os.path.exists(CREDENTIALS_PATH):
         return service_account.Credentials.from_service_account_file(
             CREDENTIALS_PATH,
-            scopes=["https://www.googleapis.com/auth/cloud-healthcare"]
+            scopes=required_scopes
         )
     
     raise ValueError(
@@ -251,21 +259,39 @@ def get_patient_subject_ids() -> List[str]:
                 if not next_link:
                     break
 
-                # Extract page token for next request
-                if "_page_token=" in next_link:
-                    page_token = next_link.split("_page_token=")[1].split("&")[0]
-                    params["_page_token"] = page_token
-                else:
+                # Extract page token for next request using proper URL parsing
+                try:
+                    parsed_url = urlparse(next_link)
+                    query_params = parse_qs(parsed_url.query)
+                    
+                    if "_page_token" in query_params:
+                        # Get the first value and URL-decode it
+                        page_token = query_params["_page_token"][0]
+                        # Decode the token in case it's URL-encoded
+                        page_token = unquote(page_token)
+                        params["_page_token"] = page_token
+                    else:
+                        # No page token found, we're done
+                        break
+                except Exception as parse_error:
+                    print(f"⚠ Warning: Failed to parse next page URL: {parse_error}")
+                    print(f"   URL: {next_link}")
+                    # If we can't parse the URL, try to continue with what we have
                     break
 
             except Exception as page_error:
-                traceback.print_exc()
+                error_str = str(page_error)
                 # If pagination fails (e.g., invalid_page_token), return what we have so far
-                if "invalid_page_token" in str(page_error) or "page token" in str(page_error).lower():
-                    print(f"⚠ Pagination stopped due to token error. Returning {len(all_patient_ids)} patients fetched so far.")
+                if "invalid_page_token" in error_str or "page token" in error_str.lower():
+                    print(f"⚠ Pagination stopped due to invalid page token error.")
+                    print(f"   Fetched {len(all_patient_ids)} patients so far. This may be incomplete.")
+                    print(f"   Error: {error_str[:200]}")  # Print first 200 chars of error
+                    # Clear any page token from params to prevent retry with bad token
+                    params.pop("_page_token", None)
                     break
                 else:
-                    # For other errors, re-raise
+                    # For other errors, log and re-raise
+                    traceback.print_exc()
                     raise
 
         # Cache the result
@@ -369,12 +395,15 @@ def get_imaging_files_for_patient(patient_id: str) -> List[str]:
     Get list of NIfTI imaging file URLs stored in GCS for a specific patient.
 
     Filters out directory-level blobs.
+    
+    Returns empty list if GCS access fails (e.g., permissions issue) to prevent
+    crashing the entire normalization process.
 
     Args:
         patient_id (str): FHIR patient ID.
 
     Returns:
-        List[str]: List of GCS URLs for imaging files.
+        List[str]: List of GCS URLs for imaging files, or empty list on error.
     """
     if patient_id in _gcs_imaging_cache and _is_cache_valid(patient_id):
         print(f"✓ [CACHE HIT] Imaging for {patient_id}")
@@ -401,7 +430,15 @@ def get_imaging_files_for_patient(patient_id: str) -> List[str]:
 
         return imaging_files
     except Exception as e:
-        raise Exception(f"Failed to fetch imaging files: {str(e)}")
+        # Log the error but return empty list instead of crashing
+        # This allows normalization to proceed even if imaging files can't be fetched
+        error_msg = str(e)
+        print(f"⚠ Warning: Failed to fetch imaging files for patient {patient_id}: {error_msg}")
+        print(f"   Returning empty imaging list to allow normalization to proceed")
+        # Cache empty list to avoid repeated failed attempts
+        _gcs_imaging_cache[patient_id] = []
+        _cache_timestamps[patient_id] = datetime.now()
+        return []
 
 # -------------------------------
 # Normalization Functions
