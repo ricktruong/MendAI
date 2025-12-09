@@ -35,8 +35,9 @@ RUN --mount=type=cache,target=/root/.cache/pypoetry \
 # Copy Patient Data service code into container
 COPY --chown=app patient_data/ ./
 
-# Copy Google service account credentials
-COPY --chown=app patient_data/mendai-470816-d39912146cc6.json ./
+# Note: Google Cloud credentials are provided via GOOGLE_SERVICE_ACCOUNT_JSON
+# environment variable (for cloud deployments) or GOOGLE_APPLICATION_CREDENTIALS
+# file path (for local development). Do NOT commit credentials to the repository.
 
 USER app
 

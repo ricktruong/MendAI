@@ -68,7 +68,7 @@ class MedicalImageAnalysisService:
             raise ValueError("OPENAI_API_KEY not found in environment variables.")
         
         self.client = OpenAI(api_key=self.api_key)
-        self.model = os.getenv("OPENAI_MODEL", "gpt-5.1")
+        self.model = "gpt-5.1"
 
     def analyze_slice(
         self,

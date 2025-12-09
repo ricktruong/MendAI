@@ -42,7 +42,7 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: GOOGLE_CLOUD_PROJECT
-        sync: false  # Set your Google Cloud project ID
+        value: mendai-470816  # Your Google Cloud project ID
       - key: GOOGLE_APPLICATION_CREDENTIALS
         sync: false  # Set path or use service account JSON as env var
       # If using service account JSON as environment variable:
@@ -61,8 +61,6 @@ services:
         value: production
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
-      - key: OPENAI_MODEL
-        value: gpt-5.1
 
   # Biomedical LLM Service
   - type: web
@@ -76,7 +74,5 @@ services:
         value: production
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
-      - key: OPENAI_MODEL
-        value: gpt-4o-mini
       - key: PATIENT_DATA_URL
         sync: false  # Set to patient_data service URL

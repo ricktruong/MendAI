@@ -71,36 +71,47 @@ OPENAI_API_KEY=sk-your-openai-api-key-here
 
 #### Patient Data Service (`mendai-patient-data`)
 
-**Option 1: Using Service Account JSON as Environment Variable** (Recommended for Render)
+**Using Service Account JSON as Environment Variable**
 
+Your Google Service Account JSON file is located at:
 ```
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...","private_key":"..."}
-```
-
-**Option 2: Using File Path** (Requires file upload)
-
-```
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_APPLICATION_CREDENTIALS=/opt/render/project/src/credentials.json
+backend/patient_data/mendai-470816-d39912146cc6.json
 ```
 
-**Note**: For Option 2, you'll need to modify the Dockerfile to copy the credentials file.
+To convert it to a single-line string for Render, use Python:
+```bash
+cd /path/to/MendAI
+cat backend/patient_data/mendai-470816-d39912146cc6.json | python3 -c "import json, sys; print(json.dumps(json.load(sys.stdin), separators=(',', ':')))"
+```
+
+Then set these environment variables in Render:
+```
+GOOGLE_CLOUD_PROJECT=mendai-470816
+GOOGLE_SERVICE_ACCOUNT_JSON=<paste the single-line JSON string here>
+```
+
+**Important**: 
+- Copy the entire output (it will be one long line)
+- Paste it directly into Render's `GOOGLE_SERVICE_ACCOUNT_JSON` environment variable
+- Do NOT add quotes around it in Render (Render will handle that)
+- The JSON contains sensitive credentials - keep it secure!
 
 #### Medical Imaging Service (`mendai-medical-imaging`)
 
 ```
 OPENAI_API_KEY=sk-your-openai-api-key-here
-OPENAI_MODEL=gpt-5.1
 ```
+
+**Note**: The OpenAI model is configured via dynaconf settings, not environment variables.
 
 #### Biomedical LLM Service (`mendai-biomedical-llm`)
 
 ```
 OPENAI_API_KEY=sk-your-openai-api-key-here
-OPENAI_MODEL=gpt-4o-mini
 PATIENT_DATA_URL=https://mendai-patient-data.onrender.com
 ```
+
+**Note**: The OpenAI model is configured via dynaconf settings, not environment variables.
 
 ### Step 4: Update Service URLs
 
@@ -114,33 +125,22 @@ After all services are deployed, update the environment variables with the actua
 
 ### Step 5: Handle Google Cloud Credentials
 
-Since Render doesn't support file uploads directly, you have two options:
+**IMPORTANT**: Your Google Service Account JSON file (`mendai-470816-d39912146cc6.json`) is **NOT** in your repository (it's in `.gitignore` for security). This is correct and secure!
 
-#### Option A: Use Environment Variable (Recommended)
+Since Render doesn't support file uploads directly, we use the environment variable approach:
 
-1. Convert your Google Cloud service account JSON to a single-line string
-2. Set `GOOGLE_SERVICE_ACCOUNT_JSON` environment variable
-3. Modify the Patient Data service to read from this environment variable
+#### Option A: Use Environment Variable (Recommended for Render)
 
-**Modification needed**: Update `backend/patient_data/patient_data/services/fhir_service.py` to handle JSON from environment variable:
+The Patient Data service already supports reading credentials from the `GOOGLE_SERVICE_ACCOUNT_JSON` environment variable. You just need to:
 
-```python
-import os
-import json
+1. Convert your Google Cloud service account JSON to a single-line string using Python:
+   ```bash
+   cat backend/patient_data/mendai-470816-d39912146cc6.json | python3 -c "import json, sys; print(json.dumps(json.load(sys.stdin), separators=(',', ':')))"
+   ```
+2. Set `GOOGLE_SERVICE_ACCOUNT_JSON` environment variable in Render with the single-line JSON string
+3. Set `GOOGLE_CLOUD_PROJECT` environment variable (already configured in `render.yaml` as `mendai-470816`)
 
-# In your FHIR service initialization
-if os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON'):
-    credentials_info = json.loads(os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON'))
-    credentials = service_account.Credentials.from_service_account_info(credentials_info)
-elif os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
-    credentials = service_account.Credentials.from_service_account_file(
-        os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-    )
-```
-
-#### Option B: Modify Dockerfile
-
-If you prefer using a file, modify the Dockerfile to accept credentials via build args or copy from a secure location.
+**Security Note**: The credentials file (`mendai-470816-d39912146cc6.json`) is correctly excluded from your repository via `.gitignore`. The Dockerfile has been updated to NOT copy this file, so it won't be included in the Docker image. This is the secure approach.
 
 ### Step 6: Deploy Services
 
