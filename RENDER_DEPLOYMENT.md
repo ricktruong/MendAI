@@ -61,11 +61,14 @@ VITE_API_BASE_URL=https://mendai-engine.onrender.com
 #### Engine Service (`mendai-engine`)
 
 ```
+LOG_LEVEL=INFO
 PATIENT_DATA_SERVICE_URL=https://mendai-patient-data.onrender.com
 MEDICAL_IMAGING_URL=https://mendai-medical-imaging.onrender.com
 BIOMEDICAL_LLM_URL=https://mendai-biomedical-llm.onrender.com
 OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
+
+**Note**: `LOG_LEVEL=INFO` is already set in `render.yaml` to show INFO-level logs. Change to `WARNING` or `ERROR` to reduce log verbosity.
 
 **Note**: Replace URLs with your actual service URLs after deployment.
 
@@ -86,9 +89,12 @@ cat backend/patient_data/mendai-470816-d39912146cc6.json | python3 -c "import js
 
 Then set these environment variables in Render:
 ```
+LOG_LEVEL=INFO
 GOOGLE_CLOUD_PROJECT=mendai-470816
 GOOGLE_SERVICE_ACCOUNT_JSON=<paste the single-line JSON string here>
 ```
+
+**Note**: `LOG_LEVEL=INFO` is already set in `render.yaml` to show INFO-level logs.
 
 **Important**: 
 - Copy the entire output (it will be one long line)
@@ -99,19 +105,25 @@ GOOGLE_SERVICE_ACCOUNT_JSON=<paste the single-line JSON string here>
 #### Medical Imaging Service (`mendai-medical-imaging`)
 
 ```
+LOG_LEVEL=INFO
 OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
 
-**Note**: The OpenAI model is configured via dynaconf settings, not environment variables.
+**Note**: 
+- `LOG_LEVEL=INFO` is already set in `render.yaml` to show INFO-level logs
+- The OpenAI model is configured via dynaconf settings, not environment variables
 
 #### Biomedical LLM Service (`mendai-biomedical-llm`)
 
 ```
+LOG_LEVEL=INFO
 OPENAI_API_KEY=sk-your-openai-api-key-here
 PATIENT_DATA_URL=https://mendai-patient-data.onrender.com
 ```
 
-**Note**: The OpenAI model is configured via dynaconf settings, not environment variables.
+**Note**: 
+- `LOG_LEVEL=INFO` is already set in `render.yaml` to show INFO-level logs
+- The OpenAI model is configured via dynaconf settings, not environment variables
 
 ### Step 4: Update Service URLs
 
@@ -253,6 +265,13 @@ If you continue to experience memory issues with large files:
 **Issue**: Service can't connect to other services
 - **Solution**: Verify all service URLs in environment variables are correct
 - Check that services are deployed and running
+
+**Issue**: INFO-level logs not showing in Render dashboard
+- **Solution**: 
+  - Verify `LOG_LEVEL=INFO` is set in environment variables (already configured in `render.yaml`)
+  - Check that the logging configuration is working by looking for any logs (even ERROR/WARNING)
+  - If no logs appear at all, check that the service is actually running and processing requests
+  - Note: Render free tier doesn't filter logs - if `LOG_LEVEL=INFO` is set, INFO logs should appear
 - Verify CORS settings allow requests from frontend
 
 **Issue**: Google Cloud authentication fails

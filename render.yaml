@@ -22,6 +22,8 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: LOG_LEVEL
+        value: INFO
       - key: PATIENT_DATA_SERVICE_URL
         sync: false  # Set to patient_data service URL
       - key: MEDICAL_IMAGING_URL
@@ -41,6 +43,8 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: LOG_LEVEL
+        value: INFO
       - key: GOOGLE_CLOUD_PROJECT
         value: mendai-470816  # Your Google Cloud project ID
       - key: GCP_LOCATION
@@ -64,6 +68,8 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: LOG_LEVEL
+        value: INFO
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
 
@@ -77,6 +83,8 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: LOG_LEVEL
+        value: INFO
       - key: OPENAI_API_KEY
         sync: false  # Set your OpenAI API key
       - key: PATIENT_DATA_URL
