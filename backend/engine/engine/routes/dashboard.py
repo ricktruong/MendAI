@@ -384,7 +384,6 @@ async def get_patient_list_data(
                     return None
 
             # Fetch patients for current page in parallel using asyncio.gather
-            import asyncio
             tasks = [fetch_patient(subject_id) for subject_id in subject_ids]
             results = await asyncio.gather(*tasks)
 

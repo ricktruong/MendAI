@@ -231,9 +231,15 @@ If you continue to experience memory issues with large files:
 
 2. **Compress files before upload**: Use `.nii.gz` format (gzip compression) which can reduce file sizes by 50-70%
 
-3. **Upgrade only the Engine service**: Since only the Engine service handles file uploads, you can upgrade just that one service to Starter ($7/month) instead of all 5 services ($35/month)
+3. **Downsample files for demo**: Use the provided script to reduce file size by keeping every other slice:
+   ```bash
+   python scripts/downsample_nii.py input.nii output.nii
+   ```
+   This reduces file size by ~50% by keeping every other slice (configurable with `--step`).
 
-4. **Use direct cloud storage**: For very large files, consider uploading directly to Google Cloud Storage and referencing them
+4. **Upgrade only the Engine service**: Since only the Engine service handles file uploads, you can upgrade just that one service to Starter ($7/month) instead of all 5 services ($35/month)
+
+5. **Use direct cloud storage**: For very large files, consider uploading directly to Google Cloud Storage and referencing them
 
 ### Monitoring Memory Usage
 
