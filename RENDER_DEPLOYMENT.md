@@ -266,6 +266,15 @@ If you continue to experience memory issues with large files:
 - **Solution**: Verify all service URLs in environment variables are correct
 - Check that services are deployed and running
 
+**Issue**: 502 Bad Gateway errors when calling backend services
+- **Cause**: Render free tier services sleep after 15 minutes of inactivity
+- **Solution**: 
+  - The code now includes automatic retry logic with exponential backoff (up to 3 attempts)
+  - First request may take 10-30 seconds to wake up the sleeping service
+  - Subsequent requests should be fast while the service is awake
+  - To prevent sleeping: Upgrade to Starter plan ($7/month) or use a service like [UptimeRobot](https://uptimerobot.com) to ping your services every 5 minutes (free)
+  - Check service logs in Render dashboard to see if service is actually running or crashed
+
 **Issue**: INFO-level logs not showing in Render dashboard
 - **Solution**: 
   - Verify `LOG_LEVEL=INFO` is set in environment variables (already configured in `render.yaml`)

@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 import json
+import asyncio
+import httpx
 from pathlib import Path
 from engine.utils.nii_processor import nii_processor
 
@@ -256,7 +258,6 @@ async def get_patient_list_data(
     Returns:
         DashboardResponse: Paginated patient list data
     """
-    import httpx
     from datetime import datetime
     import math
 
@@ -268,11 +269,36 @@ async def get_patient_list_data(
         # Fetch patient data from patient_data service
         PATIENT_DATA_URL = os.getenv("PATIENT_DATA_SERVICE_URL", "http://patient_data:8001")
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            try:
-                # Get list of patient subject IDs from FHIR
-                response = await client.get(f"{PATIENT_DATA_URL}/api/patients/subject_ids")
-                response.raise_for_status()
+        async def fetch_with_retry(url: str, max_retries: int = 3, initial_delay: float = 2.0):
+            """
+            Fetch with retry logic for handling sleeping services (502 errors).
+            Render free tier services sleep after 15min inactivity and take ~10-30s to wake up.
+            """
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                for attempt in range(max_retries):
+                    try:
+                        response = await client.get(url)
+                        if response.status_code == 502:
+                            # Service is likely sleeping, wait and retry
+                            if attempt < max_retries - 1:
+                                delay = initial_delay * (2 ** attempt)  # Exponential backoff
+                                print(f"⚠ Service returned 502 (likely sleeping). Retrying in {delay}s (attempt {attempt + 1}/{max_retries})...")
+                                await asyncio.sleep(delay)
+                                continue
+                        response.raise_for_status()
+                        return response
+                    except httpx.HTTPStatusError as e:
+                        if e.response.status_code == 502 and attempt < max_retries - 1:
+                            delay = initial_delay * (2 ** attempt)
+                            print(f"⚠ HTTP {e.response.status_code} error. Retrying in {delay}s (attempt {attempt + 1}/{max_retries})...")
+                            await asyncio.sleep(delay)
+                            continue
+                        raise
+                raise Exception(f"Failed after {max_retries} attempts")
+
+        try:
+            # Get list of patient subject IDs from FHIR (with retry for sleeping services)
+            response = await fetch_with_retry(f"{PATIENT_DATA_URL}/api/patients/subject_ids")
                 subject_ids_data = response.json()
                 # Fix: API returns 'patient_ids' not 'subject_ids'
                 all_subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
@@ -711,18 +737,44 @@ async def get_patient_normalized_data(fhir_id: str):
     Returns:
         dict: Normalized patient data
     """
-    import httpx
+    async def fetch_with_retry(url: str, max_retries: int = 3, initial_delay: float = 2.0):
+        """
+        Fetch with retry logic for handling sleeping services (502 errors).
+        Render free tier services sleep after 15min inactivity and take ~10-30s to wake up.
+        """
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for attempt in range(max_retries):
+                try:
+                    response = await client.get(url)
+                    if response.status_code == 502:
+                        # Service is likely sleeping, wait and retry
+                        if attempt < max_retries - 1:
+                            delay = initial_delay * (2 ** attempt)  # Exponential backoff
+                            print(f"⚠ Service returned 502 (likely sleeping). Retrying in {delay}s (attempt {attempt + 1}/{max_retries})...")
+                            await asyncio.sleep(delay)
+                            continue
+                    response.raise_for_status()
+                    return response
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 502 and attempt < max_retries - 1:
+                        delay = initial_delay * (2 ** attempt)
+                        print(f"⚠ HTTP {e.response.status_code} error. Retrying in {delay}s (attempt {attempt + 1}/{max_retries})...")
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
+            raise Exception(f"Failed after {max_retries} attempts")
 
     try:
         PATIENT_DATA_URL = os.getenv("PATIENT_DATA_SERVICE_URL", "http://patient_data:8001")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{fhir_id}/normalized")
-            response.raise_for_status()
-            return response.json()
+        response = await fetch_with_retry(f"{PATIENT_DATA_URL}/api/patients/{fhir_id}/normalized")
+        return response.json()
     except httpx.HTTPError as e:
-        print(f"Error fetching normalized patient data: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch patient data: {str(e)}")
+        error_msg = str(e)
+        if "502" in error_msg:
+            error_msg += " (Service may be sleeping on free tier. It should wake up automatically, but may take 10-30 seconds.)"
+        print(f"Error fetching normalized patient data: {error_msg}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch patient data: {error_msg}")
     except Exception as e:
         print(f"Internal server error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
