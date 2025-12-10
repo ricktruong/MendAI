@@ -299,143 +299,143 @@ async def get_patient_list_data(
         try:
             # Get list of patient subject IDs from FHIR (with retry for sleeping services)
             response = await fetch_with_retry(f"{PATIENT_DATA_URL}/api/patients/subject_ids")
-                subject_ids_data = response.json()
-                # Fix: API returns 'patient_ids' not 'subject_ids'
-                all_subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
+            subject_ids_data = response.json()
+            # Fix: API returns 'patient_ids' not 'subject_ids'
+            all_subject_ids = subject_ids_data.get("patient_ids", subject_ids_data.get("subject_ids", []))
 
-                total_patients = len(all_subject_ids)
-                total_pages = math.ceil(total_patients / page_size)
-                
-                # Calculate pagination indices
-                start_idx = (page - 1) * page_size
-                end_idx = min(start_idx + page_size, total_patients)
-                
-                # Get paginated subset
-                subject_ids = all_subject_ids[start_idx:end_idx]
+            total_patients = len(all_subject_ids)
+            total_pages = math.ceil(total_patients / page_size)
+            
+            # Calculate pagination indices
+            start_idx = (page - 1) * page_size
+            end_idx = min(start_idx + page_size, total_patients)
+            
+            # Get paginated subset
+            subject_ids = all_subject_ids[start_idx:end_idx]
 
-                print(f"Fetching page {page}/{total_pages}: patients {start_idx+1}-{end_idx} of {total_patients}")
+            print(f"Fetching page {page}/{total_pages}: patients {start_idx+1}-{end_idx} of {total_patients}")
 
-                # Helper function to extract patient data
-                async def fetch_patient(subject_id: str):
-                    try:
-                        patient_response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{subject_id}", timeout=10.0)
-                        patient_response.raise_for_status()
-                        patient_raw = patient_response.json()
+            # Helper function to extract patient data
+            async def fetch_patient(subject_id: str):
+                try:
+                    patient_response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{subject_id}", timeout=10.0)
+                    patient_response.raise_for_status()
+                    patient_raw = patient_response.json()
 
-                        # Extract patient info from raw FHIR data
-                        patient_id = patient_raw.get("identifier", [{}])[0].get("value", subject_id)
-                        patient_name = patient_raw.get("name", [{}])[0].get("family", f"Patient_{patient_id}")
+                    # Extract patient info from raw FHIR data
+                    patient_id = patient_raw.get("identifier", [{}])[0].get("value", subject_id)
+                    patient_name = patient_raw.get("name", [{}])[0].get("family", f"Patient_{patient_id}")
 
-                        # Extract race and ethnicity from extensions
-                        extensions = patient_raw.get("extension", [])
-                        race = None
-                        ethnicity = None
-                        if len(extensions) > 0:
-                            race_exts = extensions[0].get("extension", [])
-                            race = next((e.get("valueCoding", {}).get("display") for e in race_exts if e.get("url") == "ombCategory"), None)
-                        if len(extensions) > 1:
-                            eth_exts = extensions[1].get("extension", [])
-                            ethnicity = next((e.get("valueCoding", {}).get("display") for e in eth_exts if e.get("url") == "ombCategory"), None)
+                    # Extract race and ethnicity from extensions
+                    extensions = patient_raw.get("extension", [])
+                    race = None
+                    ethnicity = None
+                    if len(extensions) > 0:
+                        race_exts = extensions[0].get("extension", [])
+                        race = next((e.get("valueCoding", {}).get("display") for e in race_exts if e.get("url") == "ombCategory"), None)
+                    if len(extensions) > 1:
+                        eth_exts = extensions[1].get("extension", [])
+                        ethnicity = next((e.get("valueCoding", {}).get("display") for e in eth_exts if e.get("url") == "ombCategory"), None)
 
-                        # Extract managing organization
-                        org_ref = patient_raw.get("managingOrganization", {}).get("reference", "")
+                    # Extract managing organization
+                    org_ref = patient_raw.get("managingOrganization", {}).get("reference", "")
 
-                        # Get birthDate and correct it if needed (subtract 78 years if in future)
-                        birth_date_str = patient_raw.get("birthDate")
-                        corrected_birth_date = birth_date_str
-                        age = None
-                        
-                        if birth_date_str:
-                            try:
-                                birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d")
-                                
-                                # If date is in the future, keep subtracting 78 years until it's not
-                                while birth_date.year > datetime.now().year:
-                                    birth_date = birth_date.replace(year=birth_date.year - 78)
-                                
-                                corrected_birth_date = birth_date.strftime("%Y-%m-%d")
-                                
-                                # Calculate age from corrected birthdate
-                                today = datetime.now()
-                                age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-                            except Exception as e:
-                                print(f"Error calculating age for {subject_id}: {e}")
-                                age = None
+                    # Get birthDate and correct it if needed (subtract 78 years if in future)
+                    birth_date_str = patient_raw.get("birthDate")
+                    corrected_birth_date = birth_date_str
+                    age = None
+                    
+                    if birth_date_str:
+                        try:
+                            birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d")
+                            
+                            # If date is in the future, keep subtracting 78 years until it's not
+                            while birth_date.year > datetime.now().year:
+                                birth_date = birth_date.replace(year=birth_date.year - 78)
+                            
+                            corrected_birth_date = birth_date.strftime("%Y-%m-%d")
+                            
+                            # Calculate age from corrected birthdate
+                            today = datetime.now()
+                            age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                        except Exception as e:
+                            print(f"Error calculating age for {subject_id}: {e}")
+                            age = None
 
-                        # Create a case entry from patient data
-                        return RecentCase(
-                            id=patient_id,
-                            patient_name=patient_name,
-                            file_name="FHIR_Data.json",  # Placeholder for FHIR data
-                            uploaded_at=datetime.now().strftime("%Y-%m-%d"),
-                            files=[],
-                            fhirId=subject_id,
-                            birthDate=corrected_birth_date,
-                            age=age,
-                            gender=patient_raw.get("gender"),
-                            race=race,
-                            ethnicity=ethnicity,
-                            maritalStatus=patient_raw.get("maritalStatus", {}).get("coding", [{}])[0].get("code"),
-                            managingOrganization=org_ref.split("/")[-1] if org_ref else None,
-                            language=patient_raw.get("communication", [{}])[0].get("language", {}).get("coding", [{}])[0].get("code")
-                        )
-                    except Exception as e:
-                        print(f"✗ Error fetching patient {subject_id}: {type(e).__name__}")
-                        return None
-
-                # Fetch patients for current page in parallel using asyncio.gather
-                import asyncio
-                tasks = [fetch_patient(subject_id) for subject_id in subject_ids]
-                results = await asyncio.gather(*tasks)
-
-                # Filter out None results (failed requests)
-                recent_cases = [case for case in results if case is not None]
-
-                # Merge with stored_cases to include uploaded files
-                # For each FHIR patient, check if there are files in stored_cases
-                for fhir_case in recent_cases:
-                    stored_case = next((sc for sc in stored_cases if sc.id == fhir_case.id), None)
-                    if stored_case and stored_case.files:
-                        # Merge file information from stored_cases
-                        fhir_case.files = stored_case.files
-                        fhir_case.file_name = stored_case.file_name
-                        fhir_case.uploaded_at = stored_case.uploaded_at
-                        print(f"Merged {len(stored_case.files)} files for patient {fhir_case.id}")
-
-                patients = []
-
-                print(f"Successfully loaded {len(recent_cases)} patients from FHIR (page {page}/{total_pages})")
-                if len(recent_cases) == 0 and page == 1:
-                    print("No patients loaded, falling back to stored_cases")
-                    return DashboardResponse(
-                        patients=[], 
-                        recent_cases=stored_cases,
-                        total=len(stored_cases),
-                        page=1,
-                        page_size=page_size,
-                        total_pages=1
+                    # Create a case entry from patient data
+                    return RecentCase(
+                        id=patient_id,
+                        patient_name=patient_name,
+                        file_name="FHIR_Data.json",  # Placeholder for FHIR data
+                        uploaded_at=datetime.now().strftime("%Y-%m-%d"),
+                        files=[],
+                        fhirId=subject_id,
+                        birthDate=corrected_birth_date,
+                        age=age,
+                        gender=patient_raw.get("gender"),
+                        race=race,
+                        ethnicity=ethnicity,
+                        maritalStatus=patient_raw.get("maritalStatus", {}).get("coding", [{}])[0].get("code"),
+                        managingOrganization=org_ref.split("/")[-1] if org_ref else None,
+                        language=patient_raw.get("communication", [{}])[0].get("language", {}).get("coding", [{}])[0].get("code")
                     )
+                except Exception as e:
+                    print(f"✗ Error fetching patient {subject_id}: {type(e).__name__}")
+                    return None
 
-                return DashboardResponse(
-                    patients=patients,
-                    recent_cases=recent_cases,
-                    total=total_patients,
-                    page=page,
-                    page_size=page_size,
-                    total_pages=total_pages
-                )
+            # Fetch patients for current page in parallel using asyncio.gather
+            import asyncio
+            tasks = [fetch_patient(subject_id) for subject_id in subject_ids]
+            results = await asyncio.gather(*tasks)
 
-            except httpx.HTTPError as e:
-                print(f"Error connecting to patient_data service: {e}")
-                # Fallback to stored_cases if service is unavailable
+            # Filter out None results (failed requests)
+            recent_cases = [case for case in results if case is not None]
+
+            # Merge with stored_cases to include uploaded files
+            # For each FHIR patient, check if there are files in stored_cases
+            for fhir_case in recent_cases:
+                stored_case = next((sc for sc in stored_cases if sc.id == fhir_case.id), None)
+                if stored_case and stored_case.files:
+                    # Merge file information from stored_cases
+                    fhir_case.files = stored_case.files
+                    fhir_case.file_name = stored_case.file_name
+                    fhir_case.uploaded_at = stored_case.uploaded_at
+                    print(f"Merged {len(stored_case.files)} files for patient {fhir_case.id}")
+
+            patients = []
+
+            print(f"Successfully loaded {len(recent_cases)} patients from FHIR (page {page}/{total_pages})")
+            if len(recent_cases) == 0 and page == 1:
+                print("No patients loaded, falling back to stored_cases")
                 return DashboardResponse(
-                    patients=[],
+                    patients=[], 
                     recent_cases=stored_cases,
                     total=len(stored_cases),
                     page=1,
                     page_size=page_size,
                     total_pages=1
                 )
+
+            return DashboardResponse(
+                patients=patients,
+                recent_cases=recent_cases,
+                total=total_patients,
+                page=page,
+                page_size=page_size,
+                total_pages=total_pages
+            )
+
+        except httpx.HTTPError as e:
+            print(f"Error connecting to patient_data service: {e}")
+            # Fallback to stored_cases if service is unavailable
+            return DashboardResponse(
+                patients=[],
+                recent_cases=stored_cases,
+                total=len(stored_cases),
+                page=1,
+                page_size=page_size,
+                total_pages=1
+            )
 
     except Exception as e:
         print(f"Internal server error: {e}")
