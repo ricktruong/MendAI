@@ -206,6 +206,18 @@ const PatientListPage: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      const fileName = file.name.toLowerCase();
+      
+      // Validate file extension (allow .nii and .nii.gz)
+      // Check .nii.gz first to avoid false matches with .nii
+      const isValidExtension = fileName.endsWith('.nii.gz') || fileName.endsWith('.nii');
+      
+      if (!isValidExtension) {
+        alert('Please select a valid NIfTI file (.nii or .nii.gz). Compressed .nii.gz files are recommended for faster uploads.');
+        e.target.value = ''; // Clear the input
+        return;
+      }
+      
       setSelectedFile(file);
       setDeleteFile(false); // Reset delete file flag when new file is selected
       // Add file to selectedFiles array without replacing existing ones
@@ -1062,7 +1074,6 @@ const PatientListPage: React.FC = () => {
                     type="file"
                     id="file"
                     onChange={handleFileSelect}
-                    accept=".nii,.nii.gz"
                     style={{ display: 'none' }}
                   />
                   <button
@@ -1073,7 +1084,7 @@ const PatientListPage: React.FC = () => {
                     {selectedFile ? selectedFile.name : 'Select File'}
                   </button>
                   <p className="file-hint">
-                    Only NIfTI (.nii) files are supported for CT analysis
+                    Only NIfTI (.nii or .nii.gz) files are supported for CT analysis. Compressed .nii.gz files are recommended for faster uploads.
                   </p>
                 </div>
               </div>
@@ -1343,7 +1354,6 @@ const PatientListPage: React.FC = () => {
                       type="file"
                       id="editFile"
                       onChange={handleFileSelect}
-                      accept=".nii,.nii.gz"
                       style={{ display: 'none' }}
                     />
                     <button
@@ -1424,7 +1434,7 @@ const PatientListPage: React.FC = () => {
                       </div>
                     )}
                     <p className="file-hint" style={{ margin: '8px 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                      Only NIfTI (.nii) files are supported for CT analysis. Click "Choose File" multiple times to add multiple files.
+                      Only NIfTI (.nii or .nii.gz) files are supported for CT analysis. Compressed .nii.gz files are recommended for faster uploads. Click "Choose File" multiple times to add multiple files.
                     </p>
                   </div>
                 </div>

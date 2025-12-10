@@ -343,7 +343,7 @@ const PatientDashboardPage: React.FC = () => {
           } else {
             // No NIfTI files found
             setCtImages([
-              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">No NIfTI Files</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Please upload .nii files</text></svg>'
+              'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect width="400" height="400" fill="%23fef2f2"/><circle cx="200" cy="200" r="80" fill="%23fecaca" stroke="%23dc2626" stroke-width="2"/><text x="200" y="190" font-family="Arial" font-size="14" fill="%23dc2626" text-anchor="middle">No NIfTI Files</text><text x="200" y="210" font-family="Arial" font-size="12" fill="%23dc2626" text-anchor="middle">Please upload .nii or .nii.gz files</text></svg>'
             ]);
             setLoadingImages(false);
           }
