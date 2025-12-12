@@ -318,9 +318,12 @@ async def get_patient_list_data(
             # Helper function to extract patient data
             async def fetch_patient(subject_id: str):
                 try:
-                    patient_response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{subject_id}", timeout=10.0)
-                    patient_response.raise_for_status()
-                    patient_raw = patient_response.json()
+                    # Create a dedicated HTTP client for this patient request
+                    # so we don't depend on any outer-scoped client variable.
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        patient_response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{subject_id}")
+                        patient_response.raise_for_status()
+                        patient_raw = patient_response.json()
 
                     # Extract patient info from raw FHIR data
                     patient_id = patient_raw.get("identifier", [{}])[0].get("value", subject_id)
