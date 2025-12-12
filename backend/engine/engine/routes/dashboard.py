@@ -320,7 +320,8 @@ async def get_patient_list_data(
                 try:
                     # Create a dedicated HTTP client for this patient request
                     # so we don't depend on any outer-scoped client variable.
-                    async with httpx.AsyncClient(timeout=10.0) as client:
+                    # Increase timeout to better handle cold starts / slow FHIR responses on Render+GCP.
+                    async with httpx.AsyncClient(timeout=30.0) as client:
                         patient_response = await client.get(f"{PATIENT_DATA_URL}/api/patients/{subject_id}")
                         patient_response.raise_for_status()
                         patient_raw = patient_response.json()
